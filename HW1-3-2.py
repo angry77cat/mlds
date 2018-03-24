@@ -14,21 +14,27 @@ import matplotlib.pyplot as plt
 class CNN(nn.Module):
     def __init__(self, i):
         super(CNN, self).__init__()
-        self.conv1 = nn.Sequential(nn.Conv2d(1, 2 * i, 5, 1, 2),
+        self.conv1 = nn.Sequential(nn.Conv2d(1, 8 * i, 5, 1, 2),
                                    nn.ReLU(),
                                    nn.MaxPool2d(2),
-                                   nn.BatchNorm2d(16))
+                                   nn.BatchNorm2d(8 * i))
         # m * 16 * 14 * 14
-        self.conv2 = nn.Sequential(nn.Conv2d(2 * i, 2 * (i+1), 5, 1, 2),
+        self.conv2 = nn.Sequential(nn.Conv2d(8 * i, 8 * (i+1), 5, 1, 2),
                                    nn.ReLU(),
                                    nn.MaxPool2d(2),
-                                   nn.BatchNorm2d(32))
+                                   nn.BatchNorm2d(8 * (i+1)))
         # m * 32 * 7 * 7
-        self.fc1 = nn.Linear(2 * (i+1) * 7 * 7, 32)
+        self.fc1 = nn.Linear(8 * (i+1) * 7 * 7, 32)
         self.fc2 = nn.Linear(32, 10)
 
     def forward(self, x):
-        return x
+        x = self.conv1(x)
+        x = self.conv2(x)
+        x = x.view(x.shape[0], -1)
+        x = self.fc1(x)
+        x = F.relu(x)
+        x = self.fc2(x)
+        return F.log_softmax(x, dim=1)
 
 
 def count_parameters(model):
@@ -64,6 +70,9 @@ if USE_CUDA:
     print('using cuda...')
     for model in model_list:
         model.cuda()
+    test_data = Variable(test_data.cuda())
+    test_label = Variable(test_label.cuda())
+
 optimizer_list = [optim.Adam(params=model.parameters(), lr=LR) for model in model_list]
 params_list = [count_parameters(model) for model in model_list]
 loss_func = nn.CrossEntropyLoss()
@@ -73,10 +82,14 @@ train_acc_list = []
 test_loss_list = []
 test_acc_list = []
 for step, (model, optimizer) in enumerate(zip(model_list, optimizer_list)):
+    print("model #%2d" % (step+1))
     for epoch in range(EPOCH):
         for x, y in loader:
 
             x, y = Variable(x), Variable(y)
+            if USE_CUDA:
+                x = x.cuda()
+                y = y.cuda()
             pred = model(x)
             optimizer.zero_grad()
             loss = loss_func(pred, y)
@@ -84,12 +97,12 @@ for step, (model, optimizer) in enumerate(zip(model_list, optimizer_list)):
             optimizer.step()
 
         if epoch % 10 == 0:
-            print('epoch: %3d | loss: %.4f | acc: %.4f' % (epoch, loss.data[0]))
+            print('epoch: %3d | loss: %.4f' % (epoch, loss.data[0]))
 
     train_pred = torch.max(model(x), 1)[1].data.squeeze()
     test_pred = torch.max(model(test_data), 1)[1].data.squeeze()
-    train_acc = sum(train_pred == y)/float(y.size(0))
-    test_acc = sum(test_pred == test_label)/float(test_label.size(0))
+    train_acc = sum(train_pred == y.data)/float(y.size(0))
+    test_acc = sum(test_pred == test_label.data)/float(test_label.size(0))
 
     test_loss = loss_func(model(test_data), test_label)
 
@@ -99,7 +112,7 @@ for step, (model, optimizer) in enumerate(zip(model_list, optimizer_list)):
     test_loss_list.append(test_loss.data[0])
 
 
-fig = plt.fiqure()
+fig = plt.figure()
 plt.scatter(params_list, train_acc_list, label='train')
 plt.scatter(params_list, test_acc_list, label='test')
 plt.title('accuracy')

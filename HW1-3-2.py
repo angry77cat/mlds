@@ -6,6 +6,8 @@ from torch.autograd import Variable
 import torch.utils.data as data
 import torchvision
 
+import matplotlib
+matplotlib.use('Agg') # this backend for matplotlib can run in server
 import matplotlib.pyplot as plt
 
 
@@ -43,8 +45,9 @@ def count_parameters(model):
 
 # hyper parameters
 LR = 1e-4
-EPOCH = 100
+EPOCH = 10
 BATCH_SIZE = 32
+NUM_MODEL = 25
 USE_CUDA = torch.cuda.is_available()
 
 # data
@@ -64,25 +67,27 @@ test_data = test_data.unsqueeze(1).type(torch.FloatTensor)
 loader = data.DataLoader(dataset=dataset, batch_size=BATCH_SIZE, shuffle=True)
 
 # create models
-model_list = [CNN(i+1) for i in range(25)]
-
-if USE_CUDA:
-    print('using cuda...')
-    for model in model_list:
-        model.cuda()
-    test_data = Variable(test_data.cuda())
-    test_label = Variable(test_label.cuda())
+model_list = [CNN(i+1) for i in range(NUM_MODEL)]
 
 optimizer_list = [optim.Adam(params=model.parameters(), lr=LR) for model in model_list]
 params_list = [count_parameters(model) for model in model_list]
 loss_func = nn.CrossEntropyLoss()
 
+if USE_CUDA:
+    print('using cuda...')
+    test_data = Variable(test_data.cuda(), volatile=True)
+    test_label = Variable(test_label.cuda(), volatile=True)
+
 train_loss_list = []
 train_acc_list = []
 test_loss_list = []
 test_acc_list = []
+
 for step, (model, optimizer) in enumerate(zip(model_list, optimizer_list)):
     print("model #%2d" % (step+1))
+    if USE_CUDA:
+        model.cuda()
+
     for epoch in range(EPOCH):
         for x, y in loader:
 
@@ -111,13 +116,19 @@ for step, (model, optimizer) in enumerate(zip(model_list, optimizer_list)):
     train_loss_list.append(loss.data[0])
     test_loss_list.append(test_loss.data[0])
 
+    print('move the model out from gpu...')
+    model.cpu()
+
+    # free gpu memory
+    torch.cuda.empty_cache()
+
 
 fig = plt.figure()
 plt.scatter(params_list, train_acc_list, label='train')
 plt.scatter(params_list, test_acc_list, label='test')
 plt.title('accuracy')
-plt.xlabel('accuracy')
-plt.ylabel('parameters')
+plt.xlabel('parameters')
+plt.ylabel('accuracy')
 plt.legend()
 plt.savefig('acc.png')
 plt.close()

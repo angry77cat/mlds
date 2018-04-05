@@ -8,7 +8,7 @@ HW1-1-task資料使用MNIST，HW1-1-task2使用CIFAR10。
 
 - HW1-2.py  
 直接```python HW1-2.py```便會跑完3個小題  
-```python HW1-2bonus.py``` 會執行bonus的部份
+```python HW1-2bonus.py``` 會執行bonus的部份  
 bonus只有分析sinc函數之外，3個小題使用的dataset均是mnist以及sinc函數
 
 - HW1-3-1.ipynb

@@ -18,9 +18,9 @@ import matplotlib.pyplot as plt
 # Hyperparameters
 
 BATCH_SIZE1 = 32
-BATCH_SIZE2 = 1024
+BATCH_SIZE2 = 32
 LR1 = 1e-4
-LR2 = 1e-3
+LR2 = 1e-4
 EPOCH = 20
 USE_CUDA = torch.cuda.is_available()
 
@@ -221,8 +221,8 @@ with open('log_hw1_3_3.csv', 'w+') as f:
 fig, ax = plt.subplots()
 ax2 = ax.twinx()
 
-ax.plot(np.arange(-1, 2, 0.1), loss_list, label="test loss", color='r')
-ax.plot(np.arange(-1, 2, 0.1), loss_train_list, label="train loss", color='r', linestyle='--')
+ax.plot(np.arange(-1, 2, 0.1), np.log(np.array(loss_list)), label="test loss", color='r')
+ax.plot(np.arange(-1, 2, 0.1), np.log(np.array(loss_train_list)), label="train loss", color='r', linestyle='--')
 ax2.plot(np.arange(-1, 2, 0.1), acc_list, label="test accuracy", color='b')
 ax2.plot(np.arange(-1, 2, 0.1), acc_train_list, label="train accuracy", color='b', linestyle='--')
 
@@ -231,6 +231,6 @@ ax2.set_ylabel('accuracy')
 ax.yaxis.label.set_color('red')
 ax2.yaxis.label.set_color('blue')
 
-ax.legend()
-ax2.legend()
+plt.legend()
+plt.title('batch size 32 vs 1024')
 plt.savefig('hw_1_3_3.png')

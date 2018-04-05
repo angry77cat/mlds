@@ -8,5 +8,7 @@
 
 - HW1-3-1.ipynb
 - HW1-3-2.py
-- HW1-3-3-1.py
+- HW1-3-3-1.py  
+```python HW1-3-3-1.py```會跑1-3-3 part1的部份，但兩個model的batch_size和learning_rate要手動調整。
+
 - HW1-3-3-2.py

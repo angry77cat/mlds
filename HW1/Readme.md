@@ -16,5 +16,5 @@ HW1-1-task資料使用MNIST，HW1-1-task2使用CIFAR10。
 - HW1-3-3-1.py  
 ```python HW1-3-3-1.py```會跑1-3-3 part1的部份，但兩個model的batch_size和learning_rate要手動調整。
 
-- HW1-3-3-2.py
+- HW1-3-3-2.py  
 ```python HW1-3-3-2.py```跑1-3-3 part2的部分，sharpness的計算是使用sample的方式（算出鄰近參數最大的loss減掉原本的loss）

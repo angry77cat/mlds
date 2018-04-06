@@ -11,8 +11,10 @@ HW1-1-task資料使用MNIST，HW1-1-task2使用CIFAR10。
 ```python HW1-2bonus.py``` 會執行bonus的部份  
 除了bonus只有分析sinc函數之外，3個小題使用的dataset均是mnist以及sinc函數。  
 
-- HW1-3-1.ipynb
+- HW1-3-1.py
+```python HW1-3-1.py```直接執行會再tensorpack上跑出圖形。
 - HW1-3-2.py
+```python HW1-3-2.py```直接執行會紀錄個參數量的performance圖形。
 - HW1-3-3-1.py  
 ```python HW1-3-3-1.py```會跑1-3-3 part1的部份，但兩個model的batch_size和learning_rate要手動調整。
 

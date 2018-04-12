@@ -56,16 +56,18 @@ class Dictionary:
         words = sentence.strip().split(' ')
         return words
 
-    def make_variable(self, sentence, max_length):
+    def make_variable(self, sentence, max_length=None):
         words = self.sentence2words(sentence)
         # clip the sentence
-        if len(words) >= max_length:
-            words = words[:max_length]
+        if max_length is not None:
+            if len(words) >= max_length:
+                words = words[:max_length]
         indexes = [self.word2index.get(word, self.word2index["<UNK>"]) for word in words]  # if word not in dict return <UNK>
         indexes.append(self.word2index["<EOS>"])   # add <EOS>
         # padding
-        while(len(indexes) < max_length):
-            indexes.append(self.word2index["<PAD>"])
+        if max_length is not None:
+            while(len(indexes) < max_length):
+                indexes.append(self.word2index["<PAD>"])
 
         if torch.cuda.is_available():
             return Variable(torch.LongTensor(indexes).view(-1, 1)).cuda()

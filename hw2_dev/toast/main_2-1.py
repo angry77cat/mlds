@@ -1,9 +1,15 @@
-from model import Encoder, Decoder, Seq2Seq
-from preprocess import Dictionary
+import argparse
 
 import torch
 import torch.nn as nn
 import torch.optim as optim
+
+from model import Encoder, Decoder, Seq2Seq
+from preprocess import Dictionary
+
+parser = argparse.ArgumentParser()
+parser.add_argument('--train', dest='train', default=False, action='store_true', help='train mode')
+args = parser.parse_args()
 
 
 if __name__ == "__main__":
@@ -41,3 +47,10 @@ if __name__ == "__main__":
                   loss_func=loss_func,
                   teacher_ratio=TEACHER_RATIO,
                   num_beam=BEAM)
+
+    # save the model
+    torch.save(seq2seq.encoder.state_dict(), 'model/encoder')
+    torch.save(seq2seq.decoder.state_dict(), 'model/decoder')
+
+    # evaluate (not implemented)
+    seq2seq.evaluate()

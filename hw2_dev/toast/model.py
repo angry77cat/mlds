@@ -176,7 +176,7 @@ class Seq2Seq:
     def load_training_data(self):
         with open("data/MLDS_hw2_1_data/training_id.txt", 'r') as f:
             train_list = [id for id in f.read().split('\n')[:-1]]
-        train_x = load_features(train_list[])
-        train_y, max_length = load_labels(train_list[], True, self.dictionary, max_length=self.max_length)
+        train_x = load_features(train_list)
+        train_y, max_length = load_labels(train_list, True, self.dictionary, max_length=self.max_length)
         # self.max_length = max_length
         return train_x, train_y

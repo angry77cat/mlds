@@ -5,7 +5,7 @@ import torch.nn as nn
 from torch.autograd import Variable
 import torch.nn.functional as F
 
-from preprocess import load_labels, load_features
+from preprocess import load_labels, load_features, Loader
 
 
 class Encoder(nn.Module):
@@ -100,14 +100,16 @@ class Seq2Seq:
               loss_func, teacher_ratio, num_beam,
               train_x=None, train_y=None):
         # if user doesnt specify training data and labels
-        if train_x is None or train_y is None:
-            train_x, train_y = self.load_training_data()
-
+        # if train_x is None or train_y is None:
+        #     train_x, train_y = self.load_training_data()
+        loader = Loader(batch_size=1, dictionary=self.dictionary)
         losses = []
-        for id in range(train_x.shape[0]):
+        # for id in range(train_x.shape[0]):
+        for id, (x, y) in enumerate(loader):
+            x, y = Variable(x[0]), Variable(y[0])
             loss = self.train_one(encoder_optimizer, decoder_optimizer,
                                   loss_func, teacher_ratio,
-                                  num_beam, train_x[id], train_y[id])
+                                  num_beam, x, y)
             losses.append(loss)
             if id % 10 == 0:
                 print('video #{:4d} | loss: {:.4f}'.format(id+1, loss))
@@ -173,10 +175,11 @@ class Seq2Seq:
     def evaluate(self):
         raise NotImplementedError
 
+    # deprecated
     def load_training_data(self):
         with open("data/MLDS_hw2_1_data/training_id.txt", 'r') as f:
             train_list = [id for id in f.read().split('\n')[:-1]]
-        train_x = load_features(train_list)
-        train_y, max_length = load_labels(train_list, True, self.dictionary, max_length=self.max_length)
+        train_x = load_features(train_list[:200])
+        train_y, max_length = load_labels(train_list[:200], True, self.dictionary, max_length=self.max_length)
         # self.max_length = max_length
         return train_x, train_y

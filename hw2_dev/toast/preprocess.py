@@ -9,6 +9,8 @@ import torchwordemb
 from torch.autograd import Variable
 
 
+MAX_LENGTH = 40
+
 class Dictionary:
     # use torchwordemb to load word vector
     # https://github.com/iamalbert/pytorch-wordemb
@@ -93,7 +95,7 @@ def load_features(train_list):
     load the extracted features from the files in train_list
 
     :param: train_list: a list of npy file name
-    :return: ndarray, which has shape (num_file=1450, num_frame=80, num_dim=4096)
+    :return: torch tensor, which has shape (num_file=1450, num_frame=80, num_dim=4096)
     """
 
     num_frame = 80
@@ -110,12 +112,12 @@ def load_features(train_list):
     end = time.time()
     print("loaded completed! time cost: {:2d}:{:2d}".format(int((end-start)//60), int((end-start) % 60)))
     if torch.cuda.is_available():
-        return Variable(torch.FloatTensor(features)).cuda()
+        return torch.FloatTensor(features).cuda()
     else:
-        return Variable(torch.FloatTensor(features))
+        return torch.FloatTensor(features)
 
 
-def load_labels(train_list, to_variable=True, dictionary=None, max_length=None):
+def load_labels(train_list, to_tensor=True, dictionary=None, max_length=None):
     data = json.load(open("data/MLDS_hw2_1_data/training_label.json"))
     # make a new dict to store id:caption relationship
     label_dict = {}
@@ -123,7 +125,7 @@ def load_labels(train_list, to_variable=True, dictionary=None, max_length=None):
         # label_dict[data_dict['id']] = random.sample(data_dict['caption'], 1)[0]
         label_dict[data_dict['id']] = data_dict['caption'][0]
 
-    if to_variable is True:
+    if to_tensor is True:
         # return a torch variable
         assert dictionary is not None, "argument should contain dictionary if to_variable=True"
 
@@ -142,7 +144,7 @@ def load_labels(train_list, to_variable=True, dictionary=None, max_length=None):
             label = dictionary.make_tensor(sentence, max_length)
             labels = torch.cat((labels, label), dim=1)
 
-        return Variable(labels.transpose(0, 1)[1:]), max_length
+        return labels.transpose(0, 1)[1:], max_length
 
     else:
         # return a 2d list (num_data, num_sentence=1)
@@ -150,6 +152,48 @@ def load_labels(train_list, to_variable=True, dictionary=None, max_length=None):
         for id in train_list:
             labels.append(label_dict[id])
         return labels
+
+
+class Loader:
+    def __init__(self, batch_size, dictionary, path="data/MLDS_hw2_1_data/training_id.txt"):
+        self.batch_size = batch_size
+        self.path = path
+        self.dictionary = dictionary
+        self.i = 0
+        self.num_data = 0
+
+        self.x, self.y = self.load()
+        self.num_batch = self.num_data/self.batch_size
+
+    # make this class an iterable
+    def __iter__(self):
+        return self
+
+    def __next__(self):
+        if self.i < self.num_batch:
+            if (self.i+1) * self.batch_size <= self.num_data:
+                batch_x = self.x[self.i*self.batch_size:(self.i+1) * self.batch_size]
+                batch_y = self.y[self.i*self.batch_size:(self.i+1) * self.batch_size]
+            else:
+                batch_x = self.x[self.i * self.batch_size:]
+                batch_y = self.y[self.i * self.batch_size:]
+            self.i += 1
+            return batch_x, batch_y
+        else:
+            raise StopIteration
+
+    def load(self):
+        with open(self.path, 'r') as f:
+            train_list = [id for id in f.read().split('\n')[:-1]]
+        self.num_data = len(train_list)
+        train_x = load_features(train_list)
+        train_y, _ = load_labels(train_list, to_tensor=True,
+                                 dictionary=self.dictionary, max_length=MAX_LENGTH)
+        return train_x, train_y
+
+
+
+
 
 
 ###########
@@ -183,4 +227,9 @@ def test_dataset():
 
 
 if __name__ == '__main__':
-    test_load_labels()
+    d = Dictionary(pretrain='glove', word_vector_path='data/word_vector/glove.6B.50d.txt')
+    l = Loader(1, d)
+    for idx, i in enumerate(l):
+        print(i[0].shape, i[1].shape)
+        if idx == 4:
+            break

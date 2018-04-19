@@ -173,7 +173,7 @@ class Seq2Seq:
 
         return loss.data[0] / output_length
 
-    def evaluate(self, x):
+    def evaluate(self, x, id):
         self.encoder.reset_hidden()
         self.decoder.reset_hidden()
 
@@ -194,6 +194,7 @@ class Seq2Seq:
         if torch.cuda.is_available():
             decoder_input = decoder_input.cuda()
 
+        answer = ""
         while True:
             decoder_output, decoder_attention = self.decoder(
                 decoder_input, encoder_outputs
@@ -205,9 +206,13 @@ class Seq2Seq:
             if torch.cuda.is_available():
                 decoder_input = decoder_input.cuda()
             # loss += loss_func(decoder_output, train_y[di])
-            if next == self.dictionary("<EOS>"):
+            if next == self.dictionary("<EOS>") or next == self.dictionary("<PAD>"):
+                answer = answer[:-1] + "."
                 break
-
+            answer += self.dictionary(next)
+            answer += " "
+        with open("caption.txt", 'a+') as f:
+            f.write(id + ',' + answer + '\n')
 
     # deprecated
     # def load_training_data(self):

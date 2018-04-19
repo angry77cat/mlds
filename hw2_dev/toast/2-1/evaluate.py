@@ -31,10 +31,16 @@ if __name__ == '__main__':
     seq2seq = Seq2Seq(encoder, decoder, dictionary)
 
     # load input
-    eval_list = ['_9iG5Ge01PM_3_11.avi']
-    x = load_features(eval_list)
-    x = Variable(x[0])
+    with open('data/MLDS_hw2_1_data/testing_id.txt', 'r') as f:
+        eval_list = [id for id in f.read().split('\n')[:-1]]
+    # x = load_features(eval_list)
+    # x = Variable(x[0])
     # x = Variable(torch.rand([80, 4096]))
-    if torch.cuda.is_available():
-        x = x.cuda()
-    seq2seq.evaluate(x)
+
+    for id in eval_list:
+        print('predicting: ', id)
+        x = load_features([id], mode='test')
+        x = Variable(x[0])
+        if torch.cuda.is_available():
+            x = x.cuda()
+        seq2seq.evaluate(x, id)

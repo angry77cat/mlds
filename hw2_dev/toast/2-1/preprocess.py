@@ -91,7 +91,7 @@ class Dictionary:
             return self.word2index[x]
 
 
-def load_features(train_list):
+def load_features(train_list, mode='train'):
     """
     load the extracted features from the files in train_list
 
@@ -105,7 +105,7 @@ def load_features(train_list):
     print('loading features from files..')
     start = time.time()
     for id in train_list:
-        feature = np.load("data/MLDS_hw2_1_data/training_data/feat/" + id + ".npy")
+        feature = np.load("data/MLDS_hw2_1_data/"+mode+"ing_data/feat/" + id + ".npy")
         feature = feature.reshape(1, num_frame, num_dim)
         features = np.concatenate((features, feature), axis=0)
         print("{:.1f}%".format(features.shape[0]/len(train_list) * 100), end='\r')

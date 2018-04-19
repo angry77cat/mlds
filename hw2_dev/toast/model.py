@@ -5,7 +5,7 @@ import torch.nn as nn
 from torch.autograd import Variable
 import torch.nn.functional as F
 
-from preprocess import load_labels, load_features, Loader
+from preprocess import Loader
 
 
 class Encoder(nn.Module):
@@ -21,7 +21,7 @@ class Encoder(nn.Module):
         self.hidden = self.init_hidden()
 
     def forward(self, x):
-        x = x.view(1, 1, -1)
+        x = x.view(1, 1, -1) # [1, 1, 4096]
         out, self.hidden = self.lstm(x, self.hidden)
         return out
 
@@ -58,10 +58,10 @@ class Decoder(nn.Module):
     def forward(self, x, encoder_outputs):
         """
         shape of each tensor..
-        encoder_outputs: 80, 50
-        embedded: 1, 1, 50
+        encoder_outputs: 80, word_dim
+        embedded: 1, 1, word_dim
         attn_weights: 1, 1, 80
-        attn_applied: 1, 1, 50
+        attn_applied: 1, 1, word_dim
 
         """
         embedded = self.embedding(x).view(1, 1, -1)
@@ -87,36 +87,37 @@ class Decoder(nn.Module):
     def reset_hidden(self):
         self.hidden = self.init_hidden()
 
+    def load_word_vec(self, dictionary):
+        self.embedding.weight.data.copy_(dictionary.word_vec)
+
 
 class Seq2Seq:
     # it is not a nn.Module!
-    def __init__(self, encoder, decoder, dictionary, max_length):
+    def __init__(self, encoder, decoder, dictionary=None, loader=None):
         self.encoder = encoder
         self.decoder = decoder
         self.dictionary = dictionary
-        self.max_length = max_length
+        self.loader = loader
 
     def train(self, encoder_optimizer, decoder_optimizer,
-              loss_func, teacher_ratio, num_beam,
-              train_x=None, train_y=None):
-        # if user doesnt specify training data and labels
-        # if train_x is None or train_y is None:
-        #     train_x, train_y = self.load_training_data()
-        loader = Loader(batch_size=1, dictionary=self.dictionary)
+              loss_func, teacher_ratio):
+        if self.loader is None:
+            self.loader = Loader(batch_size=1, dictionary=self.dictionary)
+        self.loader.reset()
         losses = []
         # for id in range(train_x.shape[0]):
-        for id, (x, y) in enumerate(loader):
+        for id, (x, y) in enumerate(self.loader):
             x, y = Variable(x[0]), Variable(y[0])
             loss = self.train_one(encoder_optimizer, decoder_optimizer,
                                   loss_func, teacher_ratio,
-                                  num_beam, x, y)
+                                  x, y)
             losses.append(loss)
             if id % 10 == 0:
                 print('video #{:4d} | loss: {:.4f}'.format(id+1, loss))
 
     def train_one(self, encoder_optimizer, decoder_optimizer,
-              loss_func, teacher_ratio, num_beam,
-              train_x=None, train_y=None):
+                  loss_func, teacher_ratio,
+                  train_x=None, train_y=None):
 
         encoder_optimizer.zero_grad()
         decoder_optimizer.zero_grad()
@@ -172,14 +173,47 @@ class Seq2Seq:
 
         return loss.data[0] / output_length
 
-    def evaluate(self):
-        raise NotImplementedError
+    def evaluate(self, x):
+        self.encoder.reset_hidden()
+        self.decoder.reset_hidden()
+
+        input_length = x.shape[0]
+
+        encoder_outputs = Variable(torch.zeros(80, self.encoder.hidden_size))
+        if torch.cuda.is_available():
+            encoder_outputs = encoder_outputs.cuda()
+
+        loss = 0
+        for ei in range(input_length):
+            encoder_output = self.encoder(x[ei])
+            encoder_outputs[ei] = encoder_output[0][0]
+
+        # pass the hidden output from encoder to decoder
+        self.decoder.hidden = self.encoder.hidden
+        decoder_input = Variable(torch.LongTensor([[self.dictionary("<BOS>")]]))
+        if torch.cuda.is_available():
+            decoder_input = decoder_input.cuda()
+
+        while True:
+            decoder_output, decoder_attention = self.decoder(
+                decoder_input, encoder_outputs
+            )
+            topv, topi = decoder_output.data.topk(1)
+            next = topi[0][0]
+            print(self.dictionary(next))
+            decoder_input = Variable(torch.LongTensor([[next]]))
+            if torch.cuda.is_available():
+                decoder_input = decoder_input.cuda()
+            # loss += loss_func(decoder_output, train_y[di])
+            if next == self.dictionary("<EOS>"):
+                break
+
 
     # deprecated
-    def load_training_data(self):
-        with open("data/MLDS_hw2_1_data/training_id.txt", 'r') as f:
-            train_list = [id for id in f.read().split('\n')[:-1]]
-        train_x = load_features(train_list[:200])
-        train_y, max_length = load_labels(train_list[:200], True, self.dictionary, max_length=self.max_length)
-        # self.max_length = max_length
-        return train_x, train_y
+    # def load_training_data(self):
+    #     with open("data/MLDS_hw2_1_data/training_id.txt", 'r') as f:
+    #         train_list = [id for id in f.read().split('\n')[:-1]]
+    #     train_x = load_features(train_list[:200])
+    #     train_y, max_length = load_labels(train_list[:200], True, self.dictionary, max_length=self.max_length)
+    #     # self.max_length = max_length
+    #     return train_x, train_y

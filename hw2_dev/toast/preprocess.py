@@ -11,10 +11,11 @@ from torch.autograd import Variable
 
 MAX_LENGTH = 40
 
+
 class Dictionary:
     # use torchwordemb to load word vector
     # https://github.com/iamalbert/pytorch-wordemb
-    def __init__(self, pretrain=None, word_vector_path=None):
+    def __init__(self, pretrain=None, word_vector_path=None, word_dim=None):
         self.word2index = {}
         self.index2word = {}
         self.size = 0
@@ -23,7 +24,7 @@ class Dictionary:
             print('loading pretrain gloVe word vector..')
             words, tensor = torchwordemb.load_glove_text(word_vector_path)
             self.word2index = words
-            self.word_vec = torch.cat((tensor, torch.rand(4, 50)), 0)
+            self.word_vec = torch.cat((tensor, torch.rand(4, word_dim)), 0)
 
             self.index2word = {}
             for key, value in self.word2index.items():
@@ -191,7 +192,8 @@ class Loader:
                                  dictionary=self.dictionary, max_length=MAX_LENGTH)
         return train_x, train_y
 
-
+    def reset(self):
+        self.i = 0
 
 
 

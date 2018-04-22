@@ -94,7 +94,7 @@ class Attention(nn.Module):
         self.linear = nn.Linear(hidden_size * 2, hidden_size, bias=False)
 
     def forward(self, decoder_input, decoder_hidden, encoder_outputs):
-        mix = torch.cat([decoder_input, decoder_hidden], dim=)
+        mix = torch.cat([decoder_input, decoder_hidden], dim=0)
         mix = self.linear(mix)
         weight = F.softmax(mix)
         attention_output = torch.bmm(weight.unsqueeze(0), encoder_outputs.unsqueeze(0))

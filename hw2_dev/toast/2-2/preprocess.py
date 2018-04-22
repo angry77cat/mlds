@@ -15,15 +15,16 @@ class Loader:
         self.max_length = max_length
 
         self.i = 0
-        self.x = torch.zeros(1)
-        self.y = torch.zeros(1)
+        self.x = torch.zeros((1, max_length)).type(torch.LongTensor)
+        self.y = torch.zeros((1, max_length)).type(torch.LongTensor)
         self.load_data()
         self.num_data = self.x.shape[0]
         self.num_batch = self.num_data / self.batch_size
 
     def load_data(self):
         print('loading data from file..')
-        with open("data/clr_conversation.txt", 'r') as f:
+        start = time.time()
+        with open("data/clr_test.txt", 'r') as f:
             sentence1 = ""
             sentence2 = ""
             for line in f:
@@ -31,39 +32,44 @@ class Loader:
                 if line != '+++$+++':
                     sentence1 = sentence2
                     sentence2 = line
-                    try:
-                        x, y = self.make_pair(sentence1, sentence2)
-                    except Exception:
-                        pass
-                    self.x = torch.cat([self.x, x], dim=1)
-                    self.y = torch.cat([self.y, y], dim=1)
+                    x, y = self.make_pair(sentence1, sentence2)
+                    if x is None:
+                        continue
+                    self.x = torch.cat([self.x, x.unsqueeze(0)], dim=0)
+                    self.y = torch.cat([self.y, y.unsqueeze(0)], dim=0)
+                    print('x shape: ', self.x.shape)
+                    print('y shape: ', self.y.shape)
+
                 else:
                     sentence1 = ""
                     sentence2 = ""
         self.x = self.x[1:]
         self.y = self.y[1:]
+        total_time = time.time() - start
+        print('total time: %2d:%2d' % (total_time//60, total_time % 60))
 
     def make_pair(self, x, y):
         if x == "":
-            raise Exception
+            return None, None
         # Word2Vec.wv.vocab is a dictionary: 'word': Vocab object
         # Vocab object contains (count, index, sample_int)
         x = [self.model.wv.vocab[word].index for word in x.split(' ')]
         y = [self.model.wv.vocab[word].index for word in y.split(' ')]
 
-        # padding
+        # padding x
         if len(x) > self.max_length-1:
             x[self.max_length-1] = self.dictionary("<EOS>")
         else:
-            while len(x) < self.max_length-1:
-                x.append(self.dictionary("<PAD>"))
             x.append(self.dictionary("<EOS>"))
+            while len(x) < self.max_length:
+                x.append(self.dictionary("<PAD>"))
+        # padding y
         if len(y) > self.max_length-1:
             y[self.max_length-1] = self.dictionary("<EOS>")
         else:
-            while len(y) < self.max_length-1:
-                y.append(self.dictionary("<PAD>"))
             y.append(self.dictionary("<EOS>"))
+            while len(y) < self.max_length:
+                y.append(self.dictionary("<PAD>"))
 
         return torch.LongTensor(x), torch.LongTensor(y)
 

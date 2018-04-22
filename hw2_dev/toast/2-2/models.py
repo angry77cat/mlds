@@ -21,6 +21,10 @@ class Encoder(nn.Module):
         encoder_out = encoder_out[:, :, :self.hidden_size] + encoder_out[:, :, self.hidden_size:]
         return encoder_out, encoder_hidden
 
+    def load_pretrain(self, model):
+        self.embedding.weight.data.copy_(model.wv.syn0)
+
+
 
 class Decoder(nn.Module):
     def __init__(self, vocab_size, embed_size, hidden_size, n_layer, dropout):
@@ -39,6 +43,9 @@ class Decoder(nn.Module):
         output, hidden = self.gru(torch.cat([decoder_input, embedded], dim=), hidden)
         output = self.out(output)
         return output, hidden
+
+    def load_pretrain(self, model):
+        self.embedding.weight.data.copy_(model.wv.syn0)
 
 # not used
 class Attention(nn.Module):

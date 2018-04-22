@@ -40,9 +40,12 @@ def main():
     # instantiate models
     encoder = Encoder()
     decoder = Decoder()
-    seq2seq = Seq2Seq(encoder, decoder)
     if torch.cuda.is_available():
-        seq2seq.cuda()
+        encoder.cuda()
+        decoder.cuda()
+
+    seq2seq = Seq2Seq(encoder, decoder)
+
 
     # train
     if args.train is not None:

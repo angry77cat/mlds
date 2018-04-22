@@ -3,6 +3,7 @@ import logging
 import time
 
 import torch
+import numpy as np
 from gensim.models import word2vec
 
 
@@ -43,8 +44,10 @@ class Loader:
     def make_pair(self, x, y):
         if x == "":
             raise Exception
-        x = [self.model.vocab[word].index for word in x.split(' ')]
-        y = [self.model.vocab[word].index for word in y.split(' ')]
+        # Word2Vec.wv.vocab is a dictionary: 'word': Vocab object
+        # Vocab object contains (count, index, sample_int)
+        x = [self.model.wv.vocab[word].index for word in x.split(' ')]
+        y = [self.model.wv.vocab[word].index for word in y.split(' ')]
         return torch.LongTensor(x), torch.LongTensor(y)
 
     def __iter__(self):
@@ -65,6 +68,26 @@ class Loader:
 
     def reset(self):
         self.i = 0
+
+
+class Dictionary:
+    def __init__(self, word2vec_model):
+        self.wv = word2vec_model.wv.syn0
+        self.word2index = {key: value.index for key, value in word2vec_model.wv.vocab.items()}
+        self.index2word = {value: key for key, value in self.word2index.items()}
+
+        # add <SOS>, <EOS>, <UNK>, <PAD> token to vocabulary
+        self.word2index["<SOS>"] = len(self.word2index)
+        self.index2word[len(self.index2word)] = "<SOS>"
+        self.word2index["<EOS>"] = len(self.word2index)
+        self.index2word[len(self.index2word)] = "<EOS>"
+        self.word2index["<UNK>"] = len(self.word2index)
+        self.index2word[len(self.index2word)] = "<UNK>"
+        self.word2index["<PAD>"] = len(self.word2index)
+        self.index2word[len(self.index2word)] = "<PAD>"
+
+        # also, concatenate four random vector to word vector tensor
+        self.wv = np.concatenate((self.wv, np.random(4, self.wv.shape[1])), 0)
 
 
 def get_args():

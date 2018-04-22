@@ -44,7 +44,7 @@ def main():
         # helper class to maintain words, indexes, word vectors
         dictionary = Dictionary(word2vec_model)
         # loader
-        loader = Loader(word2vec_model, args.batch_size)
+        loader = Loader(word2vec_model, dictionary, args.batch_size)
         for epoch in range(args.epoch):
             print('epoch: ', epoch)
             seq2seq.train(args, loader, dictionary)

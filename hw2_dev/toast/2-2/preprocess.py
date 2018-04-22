@@ -8,9 +8,11 @@ from gensim.models import word2vec
 
 
 class Loader:
-    def __init__(self, model, batch_size):
+    def __init__(self, model, dictionary, batch_size, max_length=20):
         self.model = model
+        self.dictionary = dictionary
         self.batch_size = batch_size
+        self.max_length = max_length
 
         self.i = 0
         self.x = torch.zeros(1)
@@ -33,8 +35,8 @@ class Loader:
                         x, y = self.make_pair(sentence1, sentence2)
                     except Exception:
                         pass
-                    self.x = torch.cat([self.x, x], dim=0)
-                    self.y = torch.cat([self.y, y], dim=0)
+                    self.x = torch.cat([self.x, x], dim=1)
+                    self.y = torch.cat([self.y, y], dim=1)
                 else:
                     sentence1 = ""
                     sentence2 = ""
@@ -48,6 +50,21 @@ class Loader:
         # Vocab object contains (count, index, sample_int)
         x = [self.model.wv.vocab[word].index for word in x.split(' ')]
         y = [self.model.wv.vocab[word].index for word in y.split(' ')]
+
+        # padding
+        if len(x) > self.max_length-1:
+            x[self.max_length-1] = self.dictionary("<EOS>")
+        else:
+            while len(x) < self.max_length-1:
+                x.append(self.dictionary("<PAD>"))
+            x.append(self.dictionary("<EOS>"))
+        if len(y) > self.max_length-1:
+            y[self.max_length-1] = self.dictionary("<EOS>")
+        else:
+            while len(y) < self.max_length-1:
+                y.append(self.dictionary("<PAD>"))
+            y.append(self.dictionary("<EOS>"))
+
         return torch.LongTensor(x), torch.LongTensor(y)
 
     def __iter__(self):

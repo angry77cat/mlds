@@ -29,9 +29,9 @@ class Encoder(nn.Module):
 
         return encoder_out, encoder_hidden
 
-    def load_pretrain(self, model, freeze=False):
-        # load the word vector from 'gensim'
-        self.embedding.weight.data.copy_(model.wv.syn0)
+    def load_pretrain(self, word_vec, freeze=False):
+        # load the word vector
+        self.embedding.weight.data.copy_(word_vec)
         if freeze:
             self.embedding.require_grad = False
 
@@ -64,30 +64,38 @@ class Decoder(nn.Module):
             output, hidden = self.gru(embedded, hidden)
             return output, hidden
         else:
-            # still working
-            # attention_weight = self.attention(torch.cat([embedded, hidden], dim=0))
-            # decoder_input = torch.bmm(attention_weight, encoder_outputs)
-            # output, hidden = self.gru(torch.cat([decoder_input, embedded], dim=0), hidden)
-            # output = self.out(output)
-            # return output, hidden
+            embedded = self.embedding(source)
+            attention = self.attention(embedded, hidden, encoder_outputs)
 
-    def load_pretrain(self, model, freeze=False):
-        # load the word vector from 'gensim'
-        self.embedding.weight.data.copy_(model.wv.syn0)
+            output = torch.cat([attention, embedded], dim=1)
+            output = F.relu(output)
+            output, hidden = self.gru(output, hidden)
+            output = self.out(output)
+            output = F.softmax(output, dim=1)
+
+            return output, hidden
+
+    def load_pretrain(self, word_vec, freeze=False):
+        # load the word vector
+        self.embedding.weight.data.copy_(word_vec)
         if freeze:
             self.embedding.require_grad = False
 
-# still working
+
 class Attention(nn.Module):
-    def __init__(self, attention_size):
+    def __init__(self, hidden_size):
         super(Attention, self).__init__()
-        self.W = nn.Linear(attention_size, attention_size, bias=False)
+        self.hidden_size = hidden_size
 
-    def score(self, decoder_hidd):
-        pass
+        # concatenate embed and hidden, so the input size is hidden_size * 2
+        self.linear = nn.Linear(hidden_size * 2, hidden_size, bias=False)
 
-    def forward(self, decoder_hidden, encoder_out):
-        pass
+    def forward(self, decoder_input, decoder_hidden, encoder_outputs):
+        mix = torch.cat([decoder_input, decoder_hidden], dim=)
+        mix = self.linear(mix)
+        weight = F.softmax(mix)
+        attention_output = torch.bmm(weight.unsqueeze(0), encoder_outputs.unsqueeze(0))
+        return attention_output
 
 
 class Seq2Seq:

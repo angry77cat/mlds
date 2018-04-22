@@ -87,7 +87,7 @@ class Dictionary:
         self.index2word[len(self.index2word)] = "<PAD>"
 
         # also, concatenate four random vector to word vector tensor
-        self.wv = np.concatenate((self.wv, np.random(4, self.wv.shape[1])), 0)
+        self.wv = np.concatenate((self.wv, np.random.rand(4, self.wv.shape[1])), 0)
 
 
 def get_args():

@@ -6,19 +6,21 @@ import torch
 import numpy as np
 from gensim.models import word2vec
 
+from config import MAX_LENGTH
+
 
 class Loader:
-    def __init__(self, model, dictionary, batch_size, max_length=20):
+    def __init__(self, model, dictionary, batch_size, max_length=MAX_LENGTH):
         self.model = model
         self.dictionary = dictionary
         self.batch_size = batch_size
         self.max_length = max_length
 
         self.i = 0
-        self.x = torch.zeros((1, max_length)).type(torch.LongTensor)
-        self.y = torch.zeros((1, max_length)).type(torch.LongTensor)
+        self.x = torch.zeros((max_length, 1)).type(torch.LongTensor)
+        self.y = torch.zeros((max_length, 1)).type(torch.LongTensor)
         self.load_data()
-        self.num_data = self.x.shape[0]
+        self.num_data = self.x.shape[1]
         self.num_batch = self.num_data / self.batch_size
 
     def load_data(self):
@@ -35,16 +37,14 @@ class Loader:
                     x, y = self.make_pair(sentence1, sentence2)
                     if x is None:
                         continue
-                    self.x = torch.cat([self.x, x.unsqueeze(0)], dim=0)
-                    self.y = torch.cat([self.y, y.unsqueeze(0)], dim=0)
-                    print('x shape: ', self.x.shape)
-                    print('y shape: ', self.y.shape)
+                    self.x = torch.cat([self.x, x.unsqueeze(1)], dim=1)
+                    self.y = torch.cat([self.y, y.unsqueeze(1)], dim=1)
 
                 else:
                     sentence1 = ""
                     sentence2 = ""
-        self.x = self.x[1:]
-        self.y = self.y[1:]
+        self.x = self.x[:, 1:]
+        self.y = self.y[:, 1:]
         total_time = time.time() - start
         print('total time: %2d:%2d' % (total_time//60, total_time % 60))
 
@@ -79,11 +79,11 @@ class Loader:
     def __next__(self):
         if self.i < self.num_batch:
             if (self.i+1) * self.batch_size <= self.num_data:
-                batch_x = self.x[self.i*self.batch_size:(self.i+1) * self.batch_size]
-                batch_y = self.y[self.i*self.batch_size:(self.i+1) * self.batch_size]
+                batch_x = self.x[:, self.i*self.batch_size:(self.i+1) * self.batch_size]
+                batch_y = self.y[:, self.i*self.batch_size:(self.i+1) * self.batch_size]
             else:
-                batch_x = self.x[self.i * self.batch_size:]
-                batch_y = self.y[self.i * self.batch_size:]
+                batch_x = self.x[:, self.i * self.batch_size:]
+                batch_y = self.y[:, self.i * self.batch_size:]
             self.i += 1
             return batch_x, batch_y
         else:

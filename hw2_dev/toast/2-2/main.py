@@ -3,14 +3,19 @@ import argparse
 import torch
 from gensim.models.word2vec import Word2Vec
 
-from models import Encoder, Decoder, Seq2Seq
-from preprocess import Loader
+from models import Encoder, Decoder, Seq2Seq, Attention
+from preprocess import Loader, Dictionary
+from config import VOCAB_SIZE, EMBED_SIZE, HIDDEN_SIZE, MAX_LENGTH
+
 
 def get_args():
     parser = argparse.ArgumentParser()
     # modes
-    parser.add_argument("--train", type=str, default=None, help="train mode")
-    parser.add_argument("--eval", type=str, default=None, help="evaluate mode")
+    parser.add_argument("--train", action="store_true", default=False, help="train mode")
+    parser.add_argument("--eval", action="store_true", default=False, help="evaluate mode")
+
+    # mechanism
+    parser.add_argument("-a", "--attention", action="store_true", help="use attention")
 
     # train parameters
     parser.add_argument("--epoch", type=int, default=10, help="number of epoch")
@@ -29,8 +34,14 @@ def main():
     args = get_args()
 
     # instantiate models
-    encoder = Encoder()
-    decoder = Decoder()
+    if args.attention:
+        print('use attention')
+        attention = Attention(EMBED_SIZE, HIDDEN_SIZE, MAX_LENGTH)
+    else:
+        print('naive seq2seq')
+        attention = None
+    encoder = Encoder(VOCAB_SIZE, EMBED_SIZE, HIDDEN_SIZE)
+    decoder = Decoder(VOCAB_SIZE, EMBED_SIZE, HIDDEN_SIZE, attention_model=attention)
     if torch.cuda.is_available():
         encoder.cuda()
         decoder.cuda()
@@ -38,7 +49,7 @@ def main():
     seq2seq = Seq2Seq(encoder, decoder)
 
     # train
-    if args.train is not None:
+    if args.train is True:
         # load pretrain word2vec model
         word2vec_model = Word2Vec.load('model/word2vec.100d')
         # helper class to maintain words, indexes, word vectors
@@ -49,8 +60,13 @@ def main():
             print('epoch: ', epoch)
             seq2seq.train(args, loader, dictionary)
 
+        # save models
+        torch.save(seq2seq.encoder.state_dict(), 'model/encoder')
+        torch.save(attention.state_dict(), 'model/attention')
+        torch.save(seq2seq.decoder.state_dict(), 'model/decoder')
+
     # evaluate
-    if args.eval is not None:
+    if args.eval is True:
         seq2seq.evaluate(args)
 
 

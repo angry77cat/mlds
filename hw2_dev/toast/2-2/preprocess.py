@@ -89,6 +89,12 @@ class Dictionary:
         # also, concatenate four random vector to word vector tensor
         self.wv = np.concatenate((self.wv, np.random.rand(4, self.wv.shape[1])), 0)
 
+    def __call__(self, x):
+        if isinstance(x, int):
+            return self.index2word[x]
+        elif isinstance(x, str):
+            return self.word2index[x]
+
 
 def get_args():
     parser = argparse.ArgumentParser()

@@ -1,9 +1,10 @@
 import argparse
 
 import torch
+from gensim.models.word2vec import Word2Vec
 
 from models import Encoder, Decoder, Seq2Seq
-
+from preprocess import Loader
 
 def get_args():
     parser = argparse.ArgumentParser()
@@ -14,7 +15,7 @@ def get_args():
     # train parameters
     parser.add_argument("--epoch", type=int, default=10, help="number of epoch")
     parser.add_argument("--lr", type=float, default=1e-3, help="learning rate")
-    parser.add_argument("--batch_size", type=int, default=1, help="batch size")
+    parser.add_argument("--batch_size", type=int, default=32, help="batch size")
     parser.add_argument("--teacher_ratio", type=float, default=0.5, help="teacher forcing ratio")
 
     # evaluate parameters
@@ -38,11 +39,19 @@ def main():
 
     # train
     if args.train is not None:
-        seq2seq.train()
+        # load pretrain word2vec model
+        word2vec_model = Word2Vec.load('model/word2vec.100d')
+        # helper class to maintain words, indexes, word vectors
+        dictionary = Dictionary(word2vec_model)
+        # loader
+        loader = Loader(word2vec_model, args.batch_size)
+        for epoch in range(args.epoch):
+            print('epoch: ', epoch)
+            seq2seq.train(args, loader, dictionary)
 
     # evaluate
     if args.eval is not None:
-        seq2seq.evaluate()
+        seq2seq.evaluate(args)
 
 
 if __name__ == "__main__":

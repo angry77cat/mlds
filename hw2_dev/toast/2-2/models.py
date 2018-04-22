@@ -6,9 +6,7 @@ import torch.optim as optim
 import torch.nn.functional as F
 from torch.autograd import Variable
 
-from gensim.models.word2vec import Word2Vec
-
-from preprocess import Loader, Dictionary
+from preprocess import Dictionary
 
 
 class Encoder(nn.Module):
@@ -108,28 +106,32 @@ class Seq2Seq:
         self.encoder = encoder
         self.decoder = decoder
 
-    # working
-    def train(self, encoder_optimizer, decoder_optimizer, loader):
+    def train(self, args, loader, dictionary):
         # set mode
         self.encoder.train()
         self.decoder.train()
 
-        # load pretrain word2vec model
-        word2vec_model = Word2Vec.load('model/word2vec.100d')
-        # helper class to maintain words, indexes, word vectors
-        dictionary = Dictionary(word2vec_model)
         # load word vector into two models
         self.encoder.load_pretrain(dictionary.wv)
         self.decoder.load_pretrain(dictionary.wv)
 
         # instantiate optimizers
-        encoder_optimizer = optim.Adam(params=)
-        decoder_optimizer = optim.Adam(params=)
+        encoder_optimizer = optim.Adam(params=filter(lambda x: x.require_grad(), self.encoder.parameters()), lr=args.lr)
+        decoder_optimizer = optim.Adam(params=filter(lambda x: x.require_grad(), self.decoder.parameters()), lr=args.lr)
 
-    # working
-    def evaluate(self):
-        self.encoder.eval()
-        self.decoder.eval()
+
+        for step, (x, y) in loader:
+            encoder_optimizer.zero_grad()
+            decoder_optimizer.zero_grad()
+            loss = self.train_a_batch(x, y, sos_idx=dictionary("<SOS>"), teacher_forcing=args.teacher_ratio)
+            loss.backward()
+            encoder_optimizer.step()
+            decoder_optimizer.step()
+
+            if step % 100 == 0:
+                print('loss: ', loss.data[0])
+
+        loader.reset()
 
     def train_a_batch(self, x, y, sos_idx=0, teacher_forcing=0.5):
         max_output_length = y.shape[0]
@@ -148,6 +150,8 @@ class Seq2Seq:
             decoder_input = decoder_input.cuda()
             decoder_outputs = decoder_outputs.cuda()
 
+        # set loss
+        loss_func = nn.NLLLoss()
         for t in range(max_output_length):
             decoder_output, hidden = self.decoder(decoder_input, hidden, encoder_outputs)
             decoder_outputs[t] = decoder_output
@@ -157,4 +161,10 @@ class Seq2Seq:
                 decoder_input = decoder_output.data.max(1)[1]
             if torch.cuda.is_available():
                 decoder_input = decoder_input.cuda()
-        return decoder_outputs
+        loss = loss_func(decoder_outputs, y)
+        return loss
+
+    # working
+    def evaluate(self):
+        self.encoder.eval()
+        self.decoder.eval()

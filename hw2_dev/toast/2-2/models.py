@@ -2,8 +2,13 @@ import random
 
 import torch
 import torch.nn as nn
+import torch.optim as optim
 import torch.nn.functional as F
 from torch.autograd import Variable
+
+from gensim.models.word2vec import Word2Vec
+
+from preprocess import Loader, Dictionary
 
 
 class Encoder(nn.Module):
@@ -103,6 +108,29 @@ class Seq2Seq:
         self.encoder = encoder
         self.decoder = decoder
 
+    # working
+    def train(self, encoder_optimizer, decoder_optimizer, loader):
+        # set mode
+        self.encoder.train()
+        self.decoder.train()
+
+        # load pretrain word2vec model
+        word2vec_model = Word2Vec.load('model/word2vec.100d')
+        # helper class to maintain words, indexes, word vectors
+        dictionary = Dictionary(word2vec_model)
+        # load word vector into two models
+        self.encoder.load_pretrain(dictionary.wv)
+        self.decoder.load_pretrain(dictionary.wv)
+
+        # instantiate optimizers
+        encoder_optimizer = optim.Adam(params=)
+        decoder_optimizer = optim.Adam(params=)
+
+    # working
+    def evaluate(self):
+        self.encoder.eval()
+        self.decoder.eval()
+
     def train_a_batch(self, x, y, sos_idx=0, teacher_forcing=0.5):
         max_output_length = y.shape[0]
         batch_size = x.shape[1]
@@ -130,6 +158,3 @@ class Seq2Seq:
             if torch.cuda.is_available():
                 decoder_input = decoder_input.cuda()
         return decoder_outputs
-
-    def train(self):
-        pass

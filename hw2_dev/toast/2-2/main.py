@@ -1,10 +1,8 @@
 import argparse
 
 import torch
-import torch.nn as nn
 
 from models import Encoder, Decoder, Seq2Seq
-from preprocess import Loader
 
 
 def get_args():
@@ -25,14 +23,6 @@ def get_args():
     return parser.parse_args()
 
 
-def evaluate(model):
-    model.eval()
-
-
-def train(model):
-    model.train()
-
-
 def main():
     # get arguments
     args = get_args()
@@ -46,14 +36,13 @@ def main():
 
     seq2seq = Seq2Seq(encoder, decoder)
 
-
     # train
     if args.train is not None:
-        train(seq2seq)
+        seq2seq.train()
 
     # evaluate
     if args.eval is not None:
-        eval(seq2seq)
+        seq2seq.evaluate()
 
 
 if __name__ == "__main__":

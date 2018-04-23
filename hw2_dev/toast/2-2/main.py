@@ -2,6 +2,7 @@ import argparse
 
 import torch
 from gensim.models.word2vec import Word2Vec
+import jieba
 
 from models import Encoder, Decoder, Seq2Seq, Attention
 from preprocess import Loader, Dictionary
@@ -12,7 +13,7 @@ def get_args():
     parser = argparse.ArgumentParser()
     # modes
     parser.add_argument("--train", action="store_true", default=False, help="train mode")
-    parser.add_argument("--eval", action="store_true", default=False, help="evaluate mode")
+    parser.add_argument("--demo", action="store_true", default=False, help="demo mode")
 
     # mechanism
     parser.add_argument("-a", "--attention", action="store_true", help="use attention")
@@ -22,6 +23,7 @@ def get_args():
     parser.add_argument("--lr", type=float, default=1e-3, help="learning rate")
     parser.add_argument("--batch_size", type=int, default=32, help="batch size")
     parser.add_argument("--teacher_ratio", type=float, default=0.5, help="teacher forcing ratio")
+    parser.add_argument("--grad_clip", type=float, default=10.0, help="maximum of gradient norm")
 
     # evaluate parameters
     parser.add_argument("--beam", type=int, default=2, help="beam search cache size")
@@ -48,12 +50,13 @@ def main():
 
     seq2seq = Seq2Seq(encoder, decoder)
 
+    # load pretrain word2vec model
+    word2vec_model = Word2Vec.load('model/word2vec.100d')
+    # helper class to maintain words, indexes, word vectors
+    dictionary = Dictionary(word2vec_model)
+
     # train
-    if args.train is True:
-        # load pretrain word2vec model
-        word2vec_model = Word2Vec.load('model/word2vec.100d')
-        # helper class to maintain words, indexes, word vectors
-        dictionary = Dictionary(word2vec_model)
+    if args.train is True and args.demo is False:
         # loader
         loader = Loader(word2vec_model, dictionary, args.batch_size)
         for epoch in range(args.epoch):
@@ -62,12 +65,12 @@ def main():
 
         # save models
         torch.save(seq2seq.encoder.state_dict(), 'model/encoder')
-        torch.save(attention.state_dict(), 'model/attention')
         torch.save(seq2seq.decoder.state_dict(), 'model/decoder')
 
-    # evaluate
-    if args.eval is True:
-        seq2seq.evaluate(args)
+    # demo
+    if args.demo is True and args.train is False:
+        _ = jieba.lcut("大家好") # dummy
+        seq2seq.demo(args, dictionary)
 
 
 if __name__ == "__main__":

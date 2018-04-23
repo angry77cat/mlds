@@ -10,7 +10,7 @@ from config import MAX_LENGTH
 
 
 class Loader:
-    def __init__(self, model, dictionary, batch_size, max_length=MAX_LENGTH):
+    def __init__(self, model, dictionary, batch_size, max_length=MAX_LENGTH, dummy=False):
         self.model = model
         self.dictionary = dictionary
         self.batch_size = batch_size

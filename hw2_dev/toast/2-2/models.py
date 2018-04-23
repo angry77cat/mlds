@@ -4,9 +4,12 @@ import torch
 import torch.nn as nn
 import torch.optim as optim
 import torch.nn.functional as F
+from torch.nn.utils import clip_grad_norm
 from torch.autograd import Variable
 
-from preprocess import Dictionary
+import jieba
+
+from config import VOCAB_SIZE, MAX_LENGTH
 
 
 class Encoder(nn.Module):
@@ -147,8 +150,13 @@ class Seq2Seq:
                 x, y = x.cuda(), y.cuda()
             encoder_optimizer.zero_grad()
             decoder_optimizer.zero_grad()
+            # train
             loss = self.train_a_batch(x, y, sos_idx=dictionary("<SOS>"), teacher_forcing=args.teacher_ratio)
             loss.backward()
+            # clip the norm before update paremeters!
+            clip_grad_norm(self.encoder.parameters(), args.grad_clip)
+            clip_grad_norm(self.decoder.parameters(), args.grad_clip)
+
             encoder_optimizer.step()
             decoder_optimizer.step()
             print('step: {} | loss: {}'.format(step, loss.data[0]))
@@ -198,3 +206,51 @@ class Seq2Seq:
     def evaluate(self):
         self.encoder.eval()
         self.decoder.eval()
+
+    def demo(self, args, dictionary):
+        self.encoder.eval()
+        self.decoder.eval()
+
+        # loading pretrain model..
+        print('loading pretrain model..')
+        self.encoder.load_state_dict(torch.load('model/encoder'))
+        self.decoder.load_state_dict(torch.load('model/decoder'))
+
+        # input loop..
+        while True:
+            user_input = input(">>>")
+            user_input = jieba.lcut(user_input)
+            print(user_input)
+            user_input.append("<EOS>")
+            while len(user_input) < MAX_LENGTH:
+                user_input.append("<PAD>")
+            user_input = [dictionary.word2index.get(x, dictionary("<UNK>")) for x in user_input]
+            user_input = Variable(torch.LongTensor(user_input))
+            user_input = user_input.unsqueeze(1)
+            if torch.cuda.is_available():
+                user_input = user_input.cuda()
+
+            # first run encoder
+            encoder_outputs, hidden = self.encoder(user_input)
+            # pass the hidden state to decoder
+            hidden = hidden[:self.decoder.n_layer]
+            # feed start of sentence to decoder
+            decoder_input = Variable(torch.LongTensor([[dictionary("<SOS>")]]))
+            if torch.cuda.is_available():
+                decoder_input = decoder_input.cuda()
+            answer = ""
+            while True:
+                decoder_output, hidden = self.decoder(decoder_input, hidden, encoder_outputs)
+                # decoder_output [1, batch_size, vocab_size]
+
+                decoder_input = Variable(decoder_output.data.max(2)[1])
+                next_word = dictionary(int(decoder_input.data[0]))
+                if next_word == "<EOS>" or next_word == "<PAD>":
+                    break
+                answer += next_word
+                # decoder_input [1, batch_size]
+                if torch.cuda.is_available():
+                    decoder_input = decoder_input.cuda()
+            print(answer)
+
+

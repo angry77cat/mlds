@@ -6,23 +6,26 @@ import torch
 import numpy as np
 from gensim.models import word2vec
 
+from config import MAX_LENGTH, EMBED_SIZE
+
 
 class Loader:
-    def __init__(self, model, dictionary, batch_size, max_length=20):
+    def __init__(self, model, dictionary, batch_size, max_length=MAX_LENGTH):
         self.model = model
         self.dictionary = dictionary
         self.batch_size = batch_size
         self.max_length = max_length
 
         self.i = 0
-        self.x = torch.zeros(1)
-        self.y = torch.zeros(1)
+        self.x = torch.zeros((max_length, 1)).type(torch.LongTensor)
+        self.y = torch.zeros((max_length, 1)).type(torch.LongTensor)
         self.load_data()
-        self.num_data = self.x.shape[0]
+        self.num_data = self.x.shape[1]
         self.num_batch = self.num_data / self.batch_size
 
     def load_data(self):
         print('loading data from file..')
+        start = time.time()
         with open("data/clr_conversation.txt", 'r') as f:
             sentence1 = ""
             sentence2 = ""
@@ -31,39 +34,44 @@ class Loader:
                 if line != '+++$+++':
                     sentence1 = sentence2
                     sentence2 = line
-                    try:
-                        x, y = self.make_pair(sentence1, sentence2)
-                    except Exception:
-                        pass
-                    self.x = torch.cat([self.x, x], dim=1)
-                    self.y = torch.cat([self.y, y], dim=1)
+                    x, y = self.make_pair(sentence1, sentence2)
+                    if x is None:
+                        continue
+                    self.x = torch.cat([self.x, x.unsqueeze(1)], dim=1)
+                    self.y = torch.cat([self.y, y.unsqueeze(1)], dim=1)
+
                 else:
                     sentence1 = ""
                     sentence2 = ""
-        self.x = self.x[1:]
-        self.y = self.y[1:]
+        self.x = self.x[:, 1:]
+        self.y = self.y[:, 1:]
+        total_time = time.time() - start
+        print('total time: %2d:%2d' % (total_time//60, total_time % 60))
 
     def make_pair(self, x, y):
         if x == "":
-            raise Exception
+            return None, None
         # Word2Vec.wv.vocab is a dictionary: 'word': Vocab object
         # Vocab object contains (count, index, sample_int)
         x = [self.model.wv.vocab[word].index for word in x.split(' ')]
         y = [self.model.wv.vocab[word].index for word in y.split(' ')]
 
-        # padding
+        # padding x
         if len(x) > self.max_length-1:
             x[self.max_length-1] = self.dictionary("<EOS>")
+            x = x[:self.max_length]
         else:
-            while len(x) < self.max_length-1:
-                x.append(self.dictionary("<PAD>"))
             x.append(self.dictionary("<EOS>"))
+            while len(x) < self.max_length:
+                x.append(self.dictionary("<PAD>"))
+        # padding y
         if len(y) > self.max_length-1:
             y[self.max_length-1] = self.dictionary("<EOS>")
+            y = y[:self.max_length]
         else:
-            while len(y) < self.max_length-1:
-                y.append(self.dictionary("<PAD>"))
             y.append(self.dictionary("<EOS>"))
+            while len(y) < self.max_length:
+                y.append(self.dictionary("<PAD>"))
 
         return torch.LongTensor(x), torch.LongTensor(y)
 
@@ -73,11 +81,11 @@ class Loader:
     def __next__(self):
         if self.i < self.num_batch:
             if (self.i+1) * self.batch_size <= self.num_data:
-                batch_x = self.x[self.i*self.batch_size:(self.i+1) * self.batch_size]
-                batch_y = self.y[self.i*self.batch_size:(self.i+1) * self.batch_size]
+                batch_x = self.x[:, self.i*self.batch_size:(self.i+1) * self.batch_size]
+                batch_y = self.y[:, self.i*self.batch_size:(self.i+1) * self.batch_size]
             else:
-                batch_x = self.x[self.i * self.batch_size:]
-                batch_y = self.y[self.i * self.batch_size:]
+                batch_x = self.x[:, self.i * self.batch_size:]
+                batch_y = self.y[:, self.i * self.batch_size:]
             self.i += 1
             return batch_x, batch_y
         else:
@@ -115,8 +123,8 @@ class Dictionary:
 
 def get_args():
     parser = argparse.ArgumentParser()
-    parser.add_argument("--word_dim", type=int, default=100, help="dimension of word embedding")
-
+    parser.add_argument("--word_dim", type=int, default=EMBED_SIZE, help="dimension of word embedding")
+    parser.add_argument("-m", "--make", action="store_true", default=False)
     return parser.parse_args()
 
 
@@ -156,7 +164,8 @@ if __name__ == "__main__":
     args = get_args()
 
     # build the txt file for training word2vec
-    make_sentence()
+    if args.make:
+        make_sentence()
 
     # train the model
     model = train_word_vector(args)

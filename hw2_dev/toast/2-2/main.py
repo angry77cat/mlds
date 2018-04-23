@@ -51,7 +51,7 @@ def main():
     seq2seq = Seq2Seq(encoder, decoder)
 
     # load pretrain word2vec model
-    word2vec_model = Word2Vec.load('model/word2vec.100d')
+    word2vec_model = Word2Vec.load('model/word2vec.%dd' % EMBED_SIZE)
     # helper class to maintain words, indexes, word vectors
     dictionary = Dictionary(word2vec_model)
 

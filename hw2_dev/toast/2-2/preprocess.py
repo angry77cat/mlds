@@ -6,11 +6,11 @@ import torch
 import numpy as np
 from gensim.models import word2vec
 
-from config import MAX_LENGTH
+from config import MAX_LENGTH, EMBED_SIZE
 
 
 class Loader:
-    def __init__(self, model, dictionary, batch_size, max_length=MAX_LENGTH, dummy=False):
+    def __init__(self, model, dictionary, batch_size, max_length=MAX_LENGTH):
         self.model = model
         self.dictionary = dictionary
         self.batch_size = batch_size
@@ -26,7 +26,7 @@ class Loader:
     def load_data(self):
         print('loading data from file..')
         start = time.time()
-        with open("data/clr_test.txt", 'r') as f:
+        with open("data/clr_conversation.txt", 'r') as f:
             sentence1 = ""
             sentence2 = ""
             for line in f:
@@ -59,6 +59,7 @@ class Loader:
         # padding x
         if len(x) > self.max_length-1:
             x[self.max_length-1] = self.dictionary("<EOS>")
+            x = x[:self.max_length]
         else:
             x.append(self.dictionary("<EOS>"))
             while len(x) < self.max_length:
@@ -66,6 +67,7 @@ class Loader:
         # padding y
         if len(y) > self.max_length-1:
             y[self.max_length-1] = self.dictionary("<EOS>")
+            y = y[:self.max_length]
         else:
             y.append(self.dictionary("<EOS>"))
             while len(y) < self.max_length:
@@ -121,8 +123,8 @@ class Dictionary:
 
 def get_args():
     parser = argparse.ArgumentParser()
-    parser.add_argument("--word_dim", type=int, default=100, help="dimension of word embedding")
-
+    parser.add_argument("--word_dim", type=int, default=EMBED_SIZE, help="dimension of word embedding")
+    parser.add_argument("-m", "--make", action="store_true", default=False)
     return parser.parse_args()
 
 
@@ -162,7 +164,8 @@ if __name__ == "__main__":
     args = get_args()
 
     # build the txt file for training word2vec
-    make_sentence()
+    if args.make:
+        make_sentence()
 
     # train the model
     model = train_word_vector(args)

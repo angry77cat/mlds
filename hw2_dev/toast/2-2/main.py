@@ -1,5 +1,7 @@
 import argparse
+import glob
 
+import gc
 import torch
 from gensim.models.word2vec import Word2Vec
 import jieba
@@ -24,6 +26,7 @@ def get_args():
     parser.add_argument("--batch_size", type=int, default=32, help="batch size")
     parser.add_argument("--teacher_ratio", type=float, default=0.5, help="teacher forcing ratio")
     parser.add_argument("--grad_clip", type=float, default=10.0, help="maximum of gradient norm")
+    parser.add_argument("--dropout", type=float, default=0.5, help="dropout probability")
 
     # evaluate parameters
     parser.add_argument("--beam", type=int, default=2, help="beam search cache size")
@@ -42,8 +45,8 @@ def main():
     else:
         print('naive seq2seq')
         attention = None
-    encoder = Encoder(VOCAB_SIZE, EMBED_SIZE, HIDDEN_SIZE)
-    decoder = Decoder(VOCAB_SIZE, EMBED_SIZE, HIDDEN_SIZE, attention_model=attention)
+    encoder = Encoder(VOCAB_SIZE, EMBED_SIZE, HIDDEN_SIZE, dropout=args.dropout)
+    decoder = Decoder(VOCAB_SIZE, EMBED_SIZE, HIDDEN_SIZE, dropout=args.dropout, attention_model=attention)
     if torch.cuda.is_available():
         encoder.cuda()
         decoder.cuda()
@@ -57,13 +60,38 @@ def main():
 
     # train
     if args.train is True and args.demo is False:
-        # loader
-        loader = Loader(word2vec_model, dictionary, args.batch_size)
+
+        # load word vector into two models
+        seq2seq.encoder.load_pretrain(dictionary.wv, freeze=True)
+        seq2seq.decoder.load_pretrain(dictionary.wv, freeze=True)
+
         for epoch in range(args.epoch):
             print('epoch: ', epoch)
-            seq2seq.train(args, loader, dictionary)
+            loss = 0
+            for step, path in enumerate(glob.glob('data/clr/*.txt')):
+                # print('training from file: ', path)
+                # some training instance has just one sentence, rather than conversation..
+                try:
+                    loader = Loader(word2vec_model, dictionary, path, args.batch_size)
+                except:
+                    # print("this instance has just one sentence!")
+                    continue
+
+                # monitor variables..
+                # for obj in gc.get_objects():
+                #     try:
+                #         if torch.is_tensor(obj) or (hasattr(obj, 'data') and torch.is_tensor(obj.data)):
+                #             print(type(obj), obj.size())
+                #     except:
+                #         pass
+                loss += seq2seq.train(args, loader, dictionary)
+                if step % 100 == 99:
+                    print('step: {:5d} | loss: {:.3f}'.format(step+1, loss/100))
+                    loss = 0
+
 
         # save models
+        torch.save(attention.state_dict(), 'model/attention')
         torch.save(seq2seq.encoder.state_dict(), 'model/encoder')
         torch.save(seq2seq.decoder.state_dict(), 'model/decoder')
 

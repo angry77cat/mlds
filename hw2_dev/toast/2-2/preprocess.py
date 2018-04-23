@@ -10,11 +10,12 @@ from config import MAX_LENGTH, EMBED_SIZE
 
 
 class Loader:
-    def __init__(self, model, dictionary, batch_size, max_length=MAX_LENGTH):
+    def __init__(self, model, dictionary, dir_path, batch_size, max_length=MAX_LENGTH):
         self.model = model
         self.dictionary = dictionary
         self.batch_size = batch_size
         self.max_length = max_length
+        self.dir_path = dir_path
 
         self.i = 0
         self.x = torch.zeros((max_length, 1)).type(torch.LongTensor)
@@ -24,18 +25,21 @@ class Loader:
         self.num_batch = self.num_data / self.batch_size
 
     def load_data(self):
-        print('loading data from file..')
-        start = time.time()
-        with open("data/clr_conversation.txt", 'r') as f:
+        # print('loading data from file..')
+        # start = time.time()
+        # 489928 lines in clr_conversation.txt
+        with open(self.dir_path, 'r') as f:
             sentence1 = ""
             sentence2 = ""
-            for line in f:
+            for idx, line in enumerate(f):
+                # print("reading process.. %2.2f%%" % (idx/489928), end='\r')
                 line = line.strip('\n')
                 if line != '+++$+++':
                     sentence1 = sentence2
                     sentence2 = line
+
                     x, y = self.make_pair(sentence1, sentence2)
-                    if x is None:
+                    if x is None or y is None:
                         continue
                     self.x = torch.cat([self.x, x.unsqueeze(1)], dim=1)
                     self.y = torch.cat([self.y, y.unsqueeze(1)], dim=1)
@@ -43,13 +47,15 @@ class Loader:
                 else:
                     sentence1 = ""
                     sentence2 = ""
+        if self.x.shape[1] == 1:
+            raise Exception
         self.x = self.x[:, 1:]
         self.y = self.y[:, 1:]
-        total_time = time.time() - start
-        print('total time: %2d:%2d' % (total_time//60, total_time % 60))
+        # total_time = time.time() - start
+        # print('total time: %2d:%2d' % (total_time//60, total_time % 60))
 
     def make_pair(self, x, y):
-        if x == "":
+        if x == "" or y == "":
             return None, None
         # Word2Vec.wv.vocab is a dictionary: 'word': Vocab object
         # Vocab object contains (count, index, sample_int)
@@ -89,6 +95,7 @@ class Loader:
             self.i += 1
             return batch_x, batch_y
         else:
+            self.i = 0
             raise StopIteration
 
     def reset(self):

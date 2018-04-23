@@ -136,10 +136,6 @@ class Seq2Seq:
         self.encoder.train()
         self.decoder.train()
 
-        # load word vector into two models
-        self.encoder.load_pretrain(dictionary.wv)
-        self.decoder.load_pretrain(dictionary.wv)
-
         # instantiate optimizers
         encoder_optimizer = optim.Adam(params=filter(lambda x: x.requires_grad, self.encoder.parameters()), lr=args.lr)
         decoder_optimizer = optim.Adam(params=filter(lambda x: x.requires_grad, self.decoder.parameters()), lr=args.lr)
@@ -159,9 +155,10 @@ class Seq2Seq:
 
             encoder_optimizer.step()
             decoder_optimizer.step()
-            print('step: {} | loss: {}'.format(step, loss.data[0]))
+            # print('loss: {}'.format(loss.data[0]))
 
         loader.reset()
+        return loss.data[0]
 
     def train_a_batch(self, x, y, sos_idx=0, teacher_forcing=0.5):
         # x [seq_length, batch_size]

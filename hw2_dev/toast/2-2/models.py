@@ -252,5 +252,3 @@ class Seq2Seq:
                 if torch.cuda.is_available():
                     decoder_input = decoder_input.cuda()
             print(answer)
-
-

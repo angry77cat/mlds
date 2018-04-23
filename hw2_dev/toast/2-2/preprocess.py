@@ -169,4 +169,3 @@ if __name__ == "__main__":
 
     # train the model
     model = train_word_vector(args)
-

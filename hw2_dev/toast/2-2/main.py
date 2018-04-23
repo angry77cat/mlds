@@ -2,6 +2,7 @@ import argparse
 import glob
 
 import gc
+import time
 import torch
 from gensim.models.word2vec import Word2Vec
 import jieba
@@ -62,12 +63,17 @@ def main():
     if args.train is True and args.demo is False:
 
         # load word vector into two models
-        seq2seq.encoder.load_pretrain(dictionary.wv, freeze=True)
-        seq2seq.decoder.load_pretrain(dictionary.wv, freeze=True)
+        seq2seq.encoder.load_pretrain(dictionary.wv, freeze=False)
+        seq2seq.decoder.load_pretrain(dictionary.wv, freeze=False)
 
         for epoch in range(args.epoch):
+            args.teacher_ratio *= 1 - (epoch/args.epoch)
+            args.lr -= 9e-4 * 1/args.epoch
+            print('================')
             print('epoch: ', epoch)
+            print('================')
             loss = 0
+            start = time.time()
             for step, path in enumerate(glob.glob('data/clr/*.txt')):
                 # print('training from file: ', path)
                 # some training instance has just one sentence, rather than conversation..
@@ -85,10 +91,11 @@ def main():
                 #     except:
                 #         pass
                 loss += seq2seq.train(args, loader, dictionary)
-                if step % 100 == 99:
-                    print('step: {:5d} | loss: {:.3f}'.format(step+1, loss/100))
-                    loss = 0
-
+                # if step % 10 == 9:
+            print('loss: {:.3f}'.format(loss/(step+1)))
+            end = time.time() - start
+            print("time cost: %2d:%2d:2d" % (end/3600, end/60, end%60))
+                #     loss = 0
 
         # save models
         torch.save(attention.state_dict(), 'model/attention')
@@ -97,9 +104,17 @@ def main():
 
     # demo
     if args.demo is True and args.train is False:
+        # so jieba will not show the noisy information when predicting
         _ = jieba.lcut("大家好") # dummy
+
+        # loading pretrain model..
+        print('loading pretrain model..')
+        seq2seq.encoder.load_state_dict(torch.load('model/encoder'))
+        seq2seq.decoder.load_state_dict(torch.load('model/decoder'))
+
         seq2seq.demo(args, dictionary)
 
 
 if __name__ == "__main__":
     main()
+

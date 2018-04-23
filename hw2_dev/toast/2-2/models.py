@@ -147,7 +147,7 @@ class Seq2Seq:
             encoder_optimizer.zero_grad()
             decoder_optimizer.zero_grad()
             # train
-            loss = self.train_a_batch(x, y, sos_idx=dictionary("<SOS>"), teacher_forcing=args.teacher_ratio)
+            loss = self.train_a_batch(x, y, dictionary, sos_idx=dictionary("<SOS>"), teacher_forcing=args.teacher_ratio)
             loss.backward()
             # clip the norm before update paremeters!
             clip_grad_norm(self.encoder.parameters(), args.grad_clip)
@@ -160,10 +160,10 @@ class Seq2Seq:
         loader.reset()
         return loss.data[0]
 
-    def train_a_batch(self, x, y, sos_idx=0, teacher_forcing=0.5):
+    def train_a_batch(self, x, y, dictionary, sos_idx=0, teacher_forcing=0.5):
         # x [seq_length, batch_size]
         # y [seq_length, batch_size]
-        max_output_length = 20
+        max_output_length = MAX_LENGTH
         batch_size = x.shape[1]
         vocab_size = self.decoder.vocab_size
 
@@ -194,9 +194,15 @@ class Seq2Seq:
                 # decoder_input [1, batch_size]
             if torch.cuda.is_available():
                 decoder_input = decoder_input.cuda()
+        # print('=========================================================')
+        # print('')
+        # print('')
+        # print('ground truth: ', [dictionary(i.data[0]) for i in y])
+        # print('rnn out: ', [dictionary(int(i)) for i in decoder_outputs.data.max(2)[1]])
         decoder_outputs = decoder_outputs.view(-1, vocab_size)
 
         loss = loss_func(decoder_outputs, y.view(-1))
+
         return loss
 
     # working
@@ -208,10 +214,6 @@ class Seq2Seq:
         self.encoder.eval()
         self.decoder.eval()
 
-        # loading pretrain model..
-        print('loading pretrain model..')
-        self.encoder.load_state_dict(torch.load('model/encoder'))
-        self.decoder.load_state_dict(torch.load('model/decoder'))
 
         # input loop..
         while True:

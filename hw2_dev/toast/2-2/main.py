@@ -79,8 +79,7 @@ def main():
                 # some training instance has just one sentence, rather than conversation..
                 try:
                     loader = Loader(word2vec_model, dictionary, path, args.batch_size)
-                except:
-                    # print("this instance has just one sentence!")
+                except Exception as e:
                     continue
 
                 # monitor variables..
@@ -94,7 +93,7 @@ def main():
                 # if step % 10 == 9:
             print('loss: {:.3f}'.format(loss/(step+1)))
             end = time.time() - start
-            print("time cost: %2d:%2d:2d" % (end/3600, end/60, end%60))
+            print("time cost: %2d:%2d:%2d" % (end/3600, end/60, end%60))
                 #     loss = 0
 
         # save models
@@ -106,6 +105,7 @@ def main():
     if args.demo is True and args.train is False:
         # so jieba will not show the noisy information when predicting
         _ = jieba.lcut("大家好") # dummy
+        jieba.load_userdict('data/userdict.txt')
 
         # loading pretrain model..
         print('loading pretrain model..')

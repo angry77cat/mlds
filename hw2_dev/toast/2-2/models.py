@@ -42,7 +42,7 @@ class Encoder(nn.Module):
             word_vec = word_vec.cuda()
         self.embedding.weight.data.copy_(word_vec)
         if freeze:
-            self.embedding.require_grad = False
+            self.embedding.requires_grad = False
 
 
 class Decoder(nn.Module):
@@ -96,7 +96,7 @@ class Decoder(nn.Module):
             word_vec = word_vec.cuda()
         self.embedding.weight.data.copy_(word_vec)
         if freeze:
-            self.embedding.require_grad = False
+            self.embedding.requires_grad = False
 
 
 class Attention(nn.Module):

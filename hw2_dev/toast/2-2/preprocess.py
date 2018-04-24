@@ -9,6 +9,14 @@ from gensim.models import word2vec
 from config import MAX_LENGTH, EMBED_SIZE
 
 
+def get_args():
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--word_dim", type=int, default=EMBED_SIZE, help="dimension of word embedding")
+    parser.add_argument("--make", action="store_true", default=False, help="make txt for training word2vec")
+    parser.add_argument("-m", "--min_count", type=int, default=5, help="min count of gensim word2vec")
+    return parser.parse_args()
+
+
 class Loader:
     def __init__(self, model, dictionary, dir_path, batch_size, max_length=MAX_LENGTH):
         self.model = model
@@ -48,6 +56,7 @@ class Loader:
                     sentence1 = ""
                     sentence2 = ""
         if self.x.shape[1] == 1:
+            # if only one sentence exist in a conversation..
             raise Exception
         self.x = self.x[:, 1:]
         self.y = self.y[:, 1:]
@@ -128,14 +137,6 @@ class Dictionary:
             return self.word2index[x]
 
 
-def get_args():
-    parser = argparse.ArgumentParser()
-    parser.add_argument("--word_dim", type=int, default=EMBED_SIZE, help="dimension of word embedding")
-    parser.add_argument("--make", action="store_true", default=False, help="make txt for training word2vec")
-    parser.add_argument("-m", "--min_count", type=int, default=5, help="min count of gensim word2vec")
-    return parser.parse_args()
-
-
 def make_sentence():
     sentence_file = open('data/clr_conversation_modified.txt', 'w+')
     with open("data/clr_conversation.txt", 'r') as f:
@@ -149,12 +150,47 @@ def make_sentence():
     sentence_file.close()
 
 
+def make_train_pair():
+    input_file = open('data/clr_input.txt', 'w+')
+    output_file = open('data/clr_output.txt', 'w+')
+
+    sentence1 = ""
+    sentence2 = ""
+    with open("data/clr_conversation.txt", 'r') as f:
+        for line in f:
+            if line != '+++$+++\n':
+                sentence1 = sentence2
+                sentence2 = line
+            else:
+                sentence1 = ""
+                sentence2 = ""
+
+            if sentence1 != "":
+                input_file.write(sentence1)
+                output_file.write(sentence2)
+    input_file.close()
+    output_file.close()
+
+
+def make_vocabulary(model):
+    with open('data/vocab.txt', 'w+') as f:
+        for word, idx in model.wv.vocab.items():
+            f.write('{} {}'.format(idx.index, word))
+
+
+def make_jieba_userdict(path='data/clr_conversation_modified.txt'):
+    userdict = open('data/userdict.txt', 'w+')
+    with open(path) as f:
+        replaced = f.read().replace('\n', '@@').replace(' ', '@@').replace('@@', ' 1\n')
+        userdict.write(replaced)
+
+
 def train_word_vector(args):
     sentences = word2vec.LineSentence('data/clr_conversation_modified.txt')
     print("training word embedding..")
     start = time.time()
     # min count matters!
-    model = word2vec.Word2Vec(sentences, size=args.word_dim, min_count=10)
+    model = word2vec.Word2Vec(sentences, size=args.word_dim, min_count=args.min_count)
     print("completed training word embedding!")
     end = time.time()
     print("training time: %2d:%2d" % ((end-start)//60, (end-start) % 60))
@@ -175,6 +211,10 @@ if __name__ == "__main__":
     # build the txt file for training word2vec
     if args.make:
         make_sentence()
+        make_train_pair()
 
     # train the model
     model = train_word_vector(args)
+
+    if args.make:
+        make_vocabulary(model)

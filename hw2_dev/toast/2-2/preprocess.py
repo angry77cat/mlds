@@ -1,6 +1,7 @@
-import argparse
-import logging
 import time
+import logging
+import argparse
+from collections import OrderedDict
 
 import torch
 import numpy as np
@@ -9,6 +10,14 @@ from gensim.models import word2vec
 from config import MAX_LENGTH, EMBED_SIZE
 
 
+def get_args():
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--word_dim", type=int, default=EMBED_SIZE, help="dimension of word embedding")
+    parser.add_argument("--make", action="store_true", default=False, help="make txt for training word2vec")
+    parser.add_argument("-m", "--min_count", type=int, default=5, help="min count of gensim word2vec")
+    return parser.parse_args()
+
+# to be deprecate
 class Loader:
     def __init__(self, model, dictionary, dir_path, batch_size, max_length=MAX_LENGTH):
         self.model = model
@@ -48,6 +57,7 @@ class Loader:
                     sentence1 = ""
                     sentence2 = ""
         if self.x.shape[1] == 1:
+            # if only one sentence exist in a conversation..
             raise Exception
         self.x = self.x[:, 1:]
         self.y = self.y[:, 1:]
@@ -105,35 +115,27 @@ class Loader:
 class Dictionary:
     def __init__(self, word2vec_model):
         self.wv = word2vec_model.wv.syn0
-        self.word2index = {key: value.index for key, value in word2vec_model.wv.vocab.items()}
+        self.word2index = {key: value.index+4 for key, value in word2vec_model.wv.vocab.items()}
         self.index2word = {value: key for key, value in self.word2index.items()}
 
         # add <SOS>, <EOS>, <UNK>, <PAD> token to vocabulary
-        self.word2index["<SOS>"] = len(self.word2index)
-        self.index2word[len(self.index2word)] = "<SOS>"
-        self.word2index["<EOS>"] = len(self.word2index)
-        self.index2word[len(self.index2word)] = "<EOS>"
-        self.word2index["<UNK>"] = len(self.word2index)
-        self.index2word[len(self.index2word)] = "<UNK>"
-        self.word2index["<PAD>"] = len(self.word2index)
-        self.index2word[len(self.index2word)] = "<PAD>"
+        self.word2index["<SOS>"] = 0
+        self.word2index["<EOS>"] = 1
+        self.word2index["<UNK>"] = 2
+        self.word2index["<PAD>"] = 3
+        self.index2word[0] = "<SOS>"
+        self.index2word[1] = "<EOS>"
+        self.index2word[2] = "<UNK>"
+        self.index2word[3] = "<PAD>"
 
         # also, concatenate four random vector to word vector tensor
-        self.wv = np.concatenate((self.wv, np.random.rand(4, self.wv.shape[1])), 0)
+        self.wv = np.concatenate((np.random.rand(4, self.wv.shape[1]), self.wv), 0)
 
     def __call__(self, x):
         if isinstance(x, int):
             return self.index2word[x]
         elif isinstance(x, str):
             return self.word2index[x]
-
-
-def get_args():
-    parser = argparse.ArgumentParser()
-    parser.add_argument("--word_dim", type=int, default=EMBED_SIZE, help="dimension of word embedding")
-    parser.add_argument("--make", action="store_true", default=False, help="make txt for training word2vec")
-    parser.add_argument("-m", "--min_count", type=int, default=5, help="min count of gensim word2vec")
-    return parser.parse_args()
 
 
 def make_sentence():
@@ -149,12 +151,54 @@ def make_sentence():
     sentence_file.close()
 
 
+def make_train_pair():
+    input_file = open('data/clr_input.txt', 'w+')
+    output_file = open('data/clr_output.txt', 'w+')
+
+    sentence1 = ""
+    sentence2 = ""
+    with open("data/clr_conversation.txt", 'r') as f:
+        for line in f:
+            if line != '+++$+++\n':
+                sentence1 = sentence2
+                sentence2 = line
+            else:
+                sentence1 = ""
+                sentence2 = ""
+
+            if sentence1 != "":
+                input_file.write(sentence1)
+                output_file.write(sentence2)
+    input_file.close()
+    output_file.close()
+
+
+def make_vocabulary(model):
+    inverse_vocab = {id.index+4: word for word, id in model.wv.vocab.items()}
+    inverse_vocab[0] = "<SOS>"
+    inverse_vocab[1] = "<EOS>"
+    inverse_vocab[2] = "<UNK>"
+    inverse_vocab[3] = "<PAD>"
+    # sorted by index
+    od = OrderedDict(sorted(inverse_vocab.items()))
+    with open('data/vocab.txt', 'w+') as f:
+        for idx, word in od.items():
+            f.write('{} {}\n'.format(idx, word))
+
+
+def make_jieba_userdict(path='data/clr_conversation_modified.txt'):
+    userdict = open('data/userdict.txt', 'w+')
+    with open(path) as f:
+        replaced = f.read().replace('\n', '@@').replace(' ', '@@').replace('@@', ' 1\n')
+        userdict.write(replaced)
+
+
 def train_word_vector(args):
     sentences = word2vec.LineSentence('data/clr_conversation_modified.txt')
     print("training word embedding..")
     start = time.time()
     # min count matters!
-    model = word2vec.Word2Vec(sentences, size=args.word_dim, min_count=10)
+    model = word2vec.Word2Vec(sentences, size=args.word_dim, min_count=args.min_count)
     print("completed training word embedding!")
     end = time.time()
     print("training time: %2d:%2d" % ((end-start)//60, (end-start) % 60))
@@ -175,6 +219,10 @@ if __name__ == "__main__":
     # build the txt file for training word2vec
     if args.make:
         make_sentence()
+        make_train_pair()
 
     # train the model
     model = train_word_vector(args)
+
+    if args.make:
+        make_vocabulary(model)

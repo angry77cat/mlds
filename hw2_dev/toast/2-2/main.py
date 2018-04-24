@@ -72,30 +72,12 @@ def main():
             print('================')
             print('epoch: ', epoch)
             print('================')
-            loss = 0
             start = time.time()
-            for step, path in enumerate(glob.glob('data/clr/*.txt')):
-                # print('training from file: ', path)
-                # some training instance has just one sentence, rather than conversation..
-                try:
-                    loader = Loader(word2vec_model, dictionary, path, args.batch_size)
-                except:
-                    # print("this instance has just one sentence!")
-                    continue
 
-                # monitor variables..
-                # for obj in gc.get_objects():
-                #     try:
-                #         if torch.is_tensor(obj) or (hasattr(obj, 'data') and torch.is_tensor(obj.data)):
-                #             print(type(obj), obj.size())
-                #     except:
-                #         pass
-                loss += seq2seq.train(args, loader, dictionary)
-                # if step % 10 == 9:
-            print('loss: {:.3f}'.format(loss/(step+1)))
+            loss = seq2seq.train(args, dictionary)
+            print('loss: {:.3f}'.format(loss))
             end = time.time() - start
-            print("time cost: %2d:%2d:2d" % (end/3600, end/60, end%60))
-                #     loss = 0
+            print("time cost: %2d:%2d" % (end/60, end%60))
 
         # save models
         torch.save(attention.state_dict(), 'model/attention')
@@ -106,6 +88,7 @@ def main():
     if args.demo is True and args.train is False:
         # so jieba will not show the noisy information when predicting
         _ = jieba.lcut("大家好") # dummy
+        jieba.load_userdict('data/userdict.txt')
 
         # loading pretrain model..
         print('loading pretrain model..')

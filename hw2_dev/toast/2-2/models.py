@@ -6,9 +6,11 @@ import torch.optim as optim
 import torch.nn.functional as F
 from torch.nn.utils import clip_grad_norm
 from torch.autograd import Variable
+from torch.utils.data import DataLoader
 
 import jieba
 
+from dataset import Conversation
 from config import VOCAB_SIZE, MAX_LENGTH
 
 
@@ -42,7 +44,7 @@ class Encoder(nn.Module):
             word_vec = word_vec.cuda()
         self.embedding.weight.data.copy_(word_vec)
         if freeze:
-            self.embedding.require_grad = False
+            self.embedding.requires_grad = False
 
 
 class Decoder(nn.Module):
@@ -96,7 +98,7 @@ class Decoder(nn.Module):
             word_vec = word_vec.cuda()
         self.embedding.weight.data.copy_(word_vec)
         if freeze:
-            self.embedding.require_grad = False
+            self.embedding.requires_grad = False
 
 
 class Attention(nn.Module):
@@ -131,10 +133,14 @@ class Seq2Seq:
         self.encoder = encoder
         self.decoder = decoder
 
-    def train(self, args, loader, dictionary):
+    def train(self, args, dictionary):
         # set mode
         self.encoder.train()
         self.decoder.train()
+
+        # load dataset
+        dataset = Conversation()
+        loader = DataLoader(dataset=dataset, shuffle=True, batch_size=args.batch_size, num_workers=4)
 
         # instantiate optimizers
         encoder_optimizer = optim.Adam(params=filter(lambda x: x.requires_grad, self.encoder.parameters()), lr=args.lr)

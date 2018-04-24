@@ -1,4 +1,5 @@
 import argparse
+import time
 
 import torch
 import torch.nn as nn
@@ -49,13 +50,16 @@ if __name__ == "__main__":
     # train
     for i in range(EPOCH):
         print('epoch: ', i)
-        seq2seq.train(encoder_optimizer=encoder_optimizer,
-                      decoder_optimizer=decoder_optimizer,
-                      loss_func=loss_func,
-                      teacher_ratio=TEACHER_RATIO)
-
-    # save the model
-    torch.save(seq2seq.encoder.state_dict(), 'model/encoder')
-    torch.save(seq2seq.decoder.state_dict(), 'model/decoder')
+        start = time.time()
+        loss = seq2seq.train(encoder_optimizer=encoder_optimizer,
+                             decoder_optimizer=decoder_optimizer,
+                             loss_func=loss_func,
+                             teacher_ratio=TEACHER_RATIO)
+        end = time.time() - start
+        print("loss: ", loss/1450)
+        print("time: %2d:%2d" % (end/60, end%60))
+        # save the model
+        torch.save(seq2seq.encoder.state_dict(), 'model/encoder')
+        torch.save(seq2seq.decoder.state_dict(), 'model/decoder')
 
 

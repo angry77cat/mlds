@@ -104,16 +104,16 @@ class Seq2Seq:
         if self.loader is None:
             self.loader = Loader(batch_size=1, dictionary=self.dictionary)
         self.loader.reset()
-        losses = []
+        losses = 0
         # for id in range(train_x.shape[0]):
         for id, (x, y) in enumerate(self.loader):
             x, y = Variable(x[0]), Variable(y[0])
             loss = self.train_one(encoder_optimizer, decoder_optimizer,
                                   loss_func, teacher_ratio,
                                   x, y)
-            losses.append(loss)
-            if id % 10 == 0:
-                print('video #{:4d} | loss: {:.4f}'.format(id+1, loss))
+            losses += loss
+            # print('video #{:4d} | loss: {:.4f}'.format(id+1, loss))
+        return losses
 
     def train_one(self, encoder_optimizer, decoder_optimizer,
                   loss_func, teacher_ratio,

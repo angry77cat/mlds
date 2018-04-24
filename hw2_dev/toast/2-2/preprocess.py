@@ -131,7 +131,8 @@ class Dictionary:
 def get_args():
     parser = argparse.ArgumentParser()
     parser.add_argument("--word_dim", type=int, default=EMBED_SIZE, help="dimension of word embedding")
-    parser.add_argument("-m", "--make", action="store_true", default=False)
+    parser.add_argument("--make", action="store_true", default=False, help="make txt for training word2vec")
+    parser.add_argument("-m", "--min_count", type=int, default=5, help="min count of gensim word2vec")
     return parser.parse_args()
 
 
@@ -152,7 +153,8 @@ def train_word_vector(args):
     sentences = word2vec.LineSentence('data/clr_conversation_modified.txt')
     print("training word embedding..")
     start = time.time()
-    model = word2vec.Word2Vec(sentences, size=args.word_dim, min_count=1)
+    # min count matters!
+    model = word2vec.Word2Vec(sentences, size=args.word_dim, min_count=10)
     print("completed training word embedding!")
     end = time.time()
     print("training time: %2d:%2d" % ((end-start)//60, (end-start) % 60))

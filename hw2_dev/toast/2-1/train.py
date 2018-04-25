@@ -14,6 +14,7 @@ parser.add_argument('--lr', type=float, default=1e-3, help='learning rate')
 parser.add_argument('--max_length', type=int, default=40, help='max length of input')
 parser.add_argument('--teaching_ratio', type=float, default=0.5, help='teaching ratio')
 parser.add_argument('--word_dim', type=int, default=300, help='dimension of word embedding')
+parser.add_argument('-p', '--pretrain', action='store_true')
 
 args = parser.parse_args()
 
@@ -31,7 +32,11 @@ if __name__ == "__main__":
     # instantiate models
     encoder = Encoder(input_size=4096, hidden_size=WORD_DIM)
     decoder = Decoder(hidden_size=WORD_DIM, output_size=400004, max_length=MAX_LENGTH)
-    decoder.load_word_vec(dictionary)
+    if args.pretrain:
+        encoder.load_state_dict(torch.load('model/encoder'))
+        decoder.load_state_dict(torch.load('model/decoder'))
+    else:	
+        decoder.load_word_vec(dictionary)
 
     if torch.cuda.is_available():
         encoder.cuda()

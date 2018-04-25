@@ -5,7 +5,6 @@ import random
 
 import numpy as np
 import torch
-import torchwordemb
 from torch.autograd import Variable
 
 
@@ -15,37 +14,44 @@ MAX_LENGTH = 40
 class Dictionary:
     # use torchwordemb to load word vector
     # https://github.com/iamalbert/pytorch-wordemb
-    def __init__(self, pretrain=None, word_vector_path=None, word_dim=None):
+    def __init__(self, model):
         self.word2index = {}
         self.index2word = {}
         self.size = 0
 
-        if pretrain is 'glove':
-            print('loading pretrain gloVe word vector..')
-            words, tensor = torchwordemb.load_glove_text(word_vector_path)
-            self.word2index = words
-            self.word_vec = torch.cat((tensor, torch.rand(4, word_dim)), 0)
+        # if pretrain is 'glove':
+        #     print('loading pretrain gloVe word vector..')
+        #     words, tensor = torchwordemb.load_glove_text(word_vector_path)
+        #     self.word2index = words
+        #     self.word_vec = torch.cat((tensor, torch.rand(4, word_dim)), 0)
+        #
+        #     self.index2word = {}
+        #     for key, value in self.word2index.items():
+        #         self.index2word[value] = key
+        #     self.size = len(self.word2index)
+        #
+        # elif pretrain is 'word2vec':
+        #     print('loading pretrain Word2Vec word vector..')
+        #
+        #     self.word2index = words
+        #     self.word_vec = tensor
+        #
+        #     self.index2word = {}
+        #     for key, value in self.word2index.items():
+        #         self.index2word[value] = key
+        #     self.size = len(self.word2index)
 
-            self.index2word = {}
-            for key, value in self.word2index.items():
-                self.index2word[value] = key
-            self.size = len(self.word2index)
-
-        elif pretrain is 'word2vec':
-            print('loading pretrain Word2Vec word vector..')
-            words, tensor = torchwordemb.load_word2vec_text(word_vector_path)
-            self.word2index = words
-            self.word_vec = tensor
-
-            self.index2word = {}
-            for key, value in self.word2index.items():
-                self.index2word[value] = key
-            self.size = len(self.word2index)
+        self.word_vec = np.concatenate((np.random.randn(4, 128), model.wv.syn0), 0)
 
         self.add_word("<BOS>")
         self.add_word("<EOS>")
         self.add_word("<PAD>")
         self.add_word("<UNK>")
+
+        for word, id in model.wv.vocab.items():
+            self.word2index[word] = id.index+4
+            self.index2word[id.index+4] = word
+        self.size = len(self.word2index)
 
     def add_sentence(self, sentence):
         words = self.sentence2words(sentence)

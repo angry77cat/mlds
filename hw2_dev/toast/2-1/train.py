@@ -5,15 +5,18 @@ import torch
 import torch.nn as nn
 import torch.optim as optim
 
+from gensim.models.word2vec import Word2Vec
+
 from model import Encoder, Decoder, Seq2Seq
 from preprocess import Dictionary
+
 
 parser = argparse.ArgumentParser()
 parser.add_argument('--epoch', type=int, default=100, help='number of epoch')
 parser.add_argument('--lr', type=float, default=1e-3, help='learning rate')
 parser.add_argument('--max_length', type=int, default=40, help='max length of input')
 parser.add_argument('--teaching_ratio', type=float, default=0.5, help='teaching ratio')
-parser.add_argument('--word_dim', type=int, default=300, help='dimension of word embedding')
+parser.add_argument('--word_dim', type=int, default=128, help='dimension of word embedding')
 parser.add_argument('-p', '--pretrain', action='store_true')
 
 args = parser.parse_args()
@@ -27,11 +30,13 @@ if __name__ == "__main__":
     WORD_DIM = args.word_dim
 
     # instantiate dictionary
-    dictionary = Dictionary(pretrain='glove', word_vector_path='data/word_vector/glove.6B.'+str(WORD_DIM)+'d.txt', word_dim=WORD_DIM)
+    model = Word2Vec.load('model/word2vec.128d')
+    vocab_size = len(model.wv.vocab) + 4
+    dictionary = Dictionary(model)
 
     # instantiate models
     encoder = Encoder(input_size=4096, hidden_size=WORD_DIM)
-    decoder = Decoder(hidden_size=WORD_DIM, output_size=400004, max_length=MAX_LENGTH)
+    decoder = Decoder(hidden_size=WORD_DIM, output_size=vocab_size, max_length=MAX_LENGTH)
     if args.pretrain:
         encoder.load_state_dict(torch.load('model/encoder'))
         decoder.load_state_dict(torch.load('model/decoder'))

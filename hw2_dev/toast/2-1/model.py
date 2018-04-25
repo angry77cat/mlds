@@ -88,7 +88,10 @@ class Decoder(nn.Module):
         self.hidden = self.init_hidden()
 
     def load_word_vec(self, dictionary):
-        self.embedding.weight.data.copy_(dictionary.word_vec)
+        wv = torch.FloatTensor(dictionary.word_vec)
+        if torch.cuda.is_available():
+            wv = wv.cuda()
+        self.embedding.weight.data.copy_(wv)
 
 
 class Seq2Seq:

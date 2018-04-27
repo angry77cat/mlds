@@ -53,6 +53,8 @@ class Decoder(nn.Module):
         self.attn_combine = nn.Linear(self.hidden_size * 2, self.hidden_size)
         self.dropout = nn.Dropout(self.dropout_p)
         self.lstm = nn.LSTM(self.hidden_size, self.hidden_size)
+        # self.lstm2 = nn.LSTM(self.hidden_size, self.hidden_size)
+        # self.lstm3 = nn.LSTM(self.hidden_size, self.hidden_size)
         self.out = nn.Linear(self.hidden_size, self.output_size)
 
     def forward(self, x, encoder_outputs):
@@ -76,6 +78,9 @@ class Decoder(nn.Module):
 
         output = F.relu(output)
         output, self.hidden = self.lstm(output, self.hidden)
+        # output, self.hidden = self.lstm2(output, self.hidden)
+        # output = F.relu(output)
+        # output, self.hidden = self.lstm3(output, self.hidden)
 
         output = F.log_softmax(self.out(output[0]), dim=1)
         return output, attn_weights
@@ -103,9 +108,9 @@ class Seq2Seq:
         self.loader = loader
 
     def train(self, encoder_optimizer, decoder_optimizer,
-              loss_func, teacher_ratio):
+              loss_func, teacher_ratio, batch_size):
         if self.loader is None:
-            self.loader = Loader(batch_size=1, dictionary=self.dictionary)
+            self.loader = Loader(batch_size=batch_size, dictionary=self.dictionary)
         self.loader.reset()
         losses = 0
         # for id in range(train_x.shape[0]):
@@ -204,7 +209,7 @@ class Seq2Seq:
             )
             topv, topi = decoder_output.data.topk(1)
             next = topi[0][0]
-            print(self.dictionary(next))
+            # print(self.dictionary(next))
             decoder_input = Variable(torch.LongTensor([[next]]))
             if torch.cuda.is_available():
                 decoder_input = decoder_input.cuda()
@@ -212,9 +217,11 @@ class Seq2Seq:
             if next == self.dictionary("<EOS>") or next == self.dictionary("<PAD>"):
                 answer = answer[:-1] + "."
                 break
+            if next == self.dictionary("<UNK>"):
+                continue
             answer += self.dictionary(next)
             answer += " "
-        with open("caption.txt", 'a+') as f:
+        with open("data/MLDS_hw2_1_data/caption.txt", 'a+') as f:
             f.write(id + ',' + answer + '\n')
 
     # deprecated

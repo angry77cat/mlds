@@ -12,8 +12,6 @@ MAX_LENGTH = 40
 
 
 class Dictionary:
-    # use torchwordemb to load word vector
-    # https://github.com/iamalbert/pytorch-wordemb
     def __init__(self, model):
         self.word2index = {}
         self.index2word = {}
@@ -41,7 +39,7 @@ class Dictionary:
         #         self.index2word[value] = key
         #     self.size = len(self.word2index)
 
-        self.word_vec = np.concatenate((np.random.randn(4, 128), model.wv.syn0), 0)
+        self.word_vec = np.concatenate((np.random.randn(4, 256), model.wv.syn0), 0)
 
         self.add_word("<BOS>")
         self.add_word("<EOS>")
@@ -107,15 +105,19 @@ def load_features(train_list, mode='train'):
 
     num_frame = 80
     num_dim = 4096
-    features = np.zeros((1, num_frame, num_dim))
+    # features = np.zeros((1, num_frame, num_dim))
+    features = []
     print('loading features from files..')
     start = time.time()
     for id in train_list:
         feature = np.load("data/MLDS_hw2_1_data/"+mode+"ing_data/feat/" + id + ".npy")
-        feature = feature.reshape(1, num_frame, num_dim)
-        features = np.concatenate((features, feature), axis=0)
-        print("{:.1f}%".format(features.shape[0]/len(train_list) * 100), end='\r')
-    features = features[1:]
+        # feature = feature.reshape(1, num_frame, num_dim)
+        # features = np.concatenate((features, feature), axis=0)
+        features.append(feature)
+        print("{:.1f}%".format(len(features)/len(train_list) * 100), end='\r')
+    # features = features[1:]
+    features = np.asarray(features)
+    features *= 1 + 0.1* (np.random.randn()-0.5)
     end = time.time()
     print("loaded completed! time cost: {:2d}:{:2d}".format(int((end-start)//60), int((end-start) % 60)))
     if torch.cuda.is_available():
@@ -124,41 +126,26 @@ def load_features(train_list, mode='train'):
         return torch.FloatTensor(features)
 
 
-def load_labels(train_list, to_tensor=True, dictionary=None, max_length=None):
+def load_labels(train_list, dictionary=None, max_length=None):
     data = json.load(open("data/MLDS_hw2_1_data/training_label.json"))
     # make a new dict to store id:caption relationship
     label_dict = {}
     for data_dict in data:
-        # label_dict[data_dict['id']] = random.sample(data_dict['caption'], 1)[0]
-        label_dict[data_dict['id']] = data_dict['caption'][0]
+        label_dict[data_dict['id']] = random.sample(data_dict['caption'], 1)[0]
+        # label_dict[data_dict['id']] = data_dict['caption'][0]
 
-    if to_tensor is True:
-        # return a torch variable
-        assert dictionary is not None, "argument should contain dictionary if to_variable=True"
+    # return a torch variable
+    assert dictionary is not None, "argument should contain dictionary if to_variable=True"
 
-        # find the max length first..
-        if max_length is None:
-            max_length = 0
-            for id in train_list:
-                length = len(dictionary.sentence2words(label_dict[id]))
-                max_length = max(length, max_length)
+    labels = torch.zeros((max_length, 1)).type(torch.LongTensor)
+    if torch.cuda.is_available():
+        labels = labels.cuda()
+    for id in train_list:
+        sentence = label_dict[id]
+        label = dictionary.make_tensor(sentence, max_length)
+        labels = torch.cat((labels, label), dim=1)
 
-        labels = torch.zeros((max_length, 1)).type(torch.LongTensor)
-        if torch.cuda.is_available():
-            labels = labels.cuda()
-        for id in train_list:
-            sentence = label_dict[id]
-            label = dictionary.make_tensor(sentence, max_length)
-            labels = torch.cat((labels, label), dim=1)
-
-        return labels.transpose(0, 1)[1:], max_length
-
-    else:
-        # return a 2d list (num_data, num_sentence=1)
-        labels = []
-        for id in train_list:
-            labels.append(label_dict[id])
-        return labels
+    return labels.transpose(0, 1)[1:], max_length
 
 
 class Loader:
@@ -194,12 +181,16 @@ class Loader:
             train_list = [id for id in f.read().split('\n')[:-1]]
         self.num_data = len(train_list)
         train_x = load_features(train_list)
-        train_y, _ = load_labels(train_list, to_tensor=True,
+        train_y, _ = load_labels(train_list,
                                  dictionary=self.dictionary, max_length=MAX_LENGTH)
         return train_x, train_y
 
     def reset(self):
         self.i = 0
+        # change the label!
+        with open(self.path, 'r') as f:
+            train_list = [id for id in f.read().split('\n')[:-1]]
+        self.y, _ = load_labels(train_list, dictionary=self.dictionary, max_length=MAX_LENGTH)
 
 
 

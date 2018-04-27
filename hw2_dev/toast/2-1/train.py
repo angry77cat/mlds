@@ -5,6 +5,7 @@ import torch
 import torch.nn as nn
 import torch.optim as optim
 
+from gensim.models import KeyedVectors
 from gensim.models.word2vec import Word2Vec
 
 from model import Encoder, Decoder, Seq2Seq
@@ -16,8 +17,9 @@ parser.add_argument('--epoch', type=int, default=100, help='number of epoch')
 parser.add_argument('--lr', type=float, default=1e-3, help='learning rate')
 parser.add_argument('--max_length', type=int, default=40, help='max length of input')
 parser.add_argument('--teaching_ratio', type=float, default=0.5, help='teaching ratio')
-parser.add_argument('--word_dim', type=int, default=128, help='dimension of word embedding')
+parser.add_argument('-w', '--word_dim', type=int, default=128, help='dimension of word embedding')
 parser.add_argument('-p', '--pretrain', action='store_true')
+parser.add_argument('-b', '--batch_size', type=int, default=32)
 
 args = parser.parse_args()
 
@@ -30,7 +32,8 @@ if __name__ == "__main__":
     WORD_DIM = args.word_dim
 
     # instantiate dictionary
-    model = Word2Vec.load('model/word2vec.128d')
+    model = Word2Vec.load('model/word2vec.%dd' % args.word_dim)
+    # wv = KeyedVectors.load_word2vec_format('model/GoogleNews-vectors-negative300.bin.gz', binary=True)
     vocab_size = len(model.wv.vocab) + 4
     dictionary = Dictionary(model)
 
@@ -64,10 +67,11 @@ if __name__ == "__main__":
         loss = seq2seq.train(encoder_optimizer=encoder_optimizer,
                              decoder_optimizer=decoder_optimizer,
                              loss_func=loss_func,
-                             teacher_ratio=TEACHER_RATIO)
+                             teacher_ratio=TEACHER_RATIO,
+                             batch_size=args.batch_size)
         end = time.time() - start
-        print("loss: ", loss/1450)
-        print("time: %2d:%2d" % (end/60, end%60))
+        print("loss: ", loss/1450*args.batch_size)
+        # print("time: %2d:%2d" % (end/60, end%60))
         # save the model
         torch.save(seq2seq.encoder.state_dict(), 'model/encoder')
         torch.save(seq2seq.decoder.state_dict(), 'model/decoder')

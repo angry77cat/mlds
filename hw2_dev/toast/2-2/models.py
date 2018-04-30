@@ -1,3 +1,4 @@
+import time
 import random
 
 import torch
@@ -15,11 +16,11 @@ from config import VOCAB_SIZE, MAX_LENGTH
 
 
 class Encoder(nn.Module):
-    def __init__(self, vocab_size, embed_size, hidden_size, n_layer=2, dropout=0.5, bidirectional=True):
+    def __init__(self, vocab_size, embed_size, hidden_size, n_layer=3, dropout=0.5, bidirectional=True):
         super(Encoder, self).__init__()
         self.hidden_size = hidden_size
         self.embedding = nn.Embedding(vocab_size, embed_size)
-        self.gru = nn.GRU(embed_size, hidden_size, n_layer, dropout=dropout, bidirectional=bidirectional)
+        self.gru = nn.GRU(embed_size, hidden_size, n_layer, dropout=dropout, bidirectional=bidirectional, batch_first=True)
 
     def forward(self, source, hidden=None):
         # source [seq_len, batch_size]
@@ -51,7 +52,7 @@ class Decoder(nn.Module):
     """
     if attention_model is not given, the decoder will not perform attention mechanism
     """
-    def __init__(self, vocab_size, embed_size, hidden_size, n_layer=1, dropout=0.5, attention_model=None):
+    def __init__(self, vocab_size, embed_size, hidden_size, n_layer=3, dropout=0.5, attention_model=None):
         super(Decoder, self).__init__()
         self.vocab_size = vocab_size
         self.n_layer = n_layer
@@ -59,12 +60,14 @@ class Decoder(nn.Module):
         # load the attention model if given
         self.attention = attention_model
         if attention_model is None:
-            self.gru = nn.GRU(embed_size, hidden_size, n_layer, dropout=dropout)
-            self.out = nn.Linear(hidden_size, vocab_size)
+            self.gru = nn.GRU(embed_size, hidden_size, n_layer, dropout=dropout, batch_first=True)
+            self.out1 = nn.Linear(hidden_size, 1024)
+            self.out2 = nn.Linear(1024, vocab_size)
 
         else:
-            self.gru = nn.GRU(embed_size + hidden_size, hidden_size, n_layer, dropout=dropout)
-            self.out = nn.Linear(hidden_size, vocab_size)
+            self.gru = nn.GRU(embed_size + hidden_size, hidden_size, n_layer, dropout=dropout, batch_first=True)
+            self.out1 = nn.Linear(hidden_size, 1024)
+            self.out2 = nn.Linear(1024, vocab_size)
 
     def forward(self, source, hidden, encoder_outputs=None):
         # source [seq_len, batch_size]
@@ -75,7 +78,9 @@ class Decoder(nn.Module):
         if self.attention is None:
             output, hidden = self.gru(embedded, hidden)
             # output [1, batch_size, hidden_size]
-            output = self.out(output)
+            output = self.out1(output)
+            output = F.relu(output)
+            output = self.out2(output)
             # output [1, batch_size, vocab_size]
             output = F.log_softmax(output, dim=2)
             return output, hidden
@@ -86,7 +91,9 @@ class Decoder(nn.Module):
             output = torch.cat([attention, embedded], dim=2)
             output = F.relu(output)
             output, hidden = self.gru(output, hidden)
-            output = self.out(output)
+            output = self.out1(output)
+            output = F.relu(output)
+            output = self.out2(output)
             output = F.log_softmax(output, dim=2)
 
             return output, hidden
@@ -129,24 +136,24 @@ class Attention(nn.Module):
 
 
 class Seq2Seq:
-    def __init__(self, encoder, decoder):
+    def __init__(self, encoder, decoder, args):
         self.encoder = encoder
         self.decoder = decoder
+
+        # load dataset
+        self.dataset = Conversation()
+        self.loader = DataLoader(dataset=self.dataset, shuffle=True, batch_size=args.batch_size, num_workers=4)
 
     def train(self, args, dictionary):
         # set mode
         self.encoder.train()
         self.decoder.train()
 
-        # load dataset
-        dataset = Conversation()
-        loader = DataLoader(dataset=dataset, shuffle=True, batch_size=args.batch_size, num_workers=4)
-
         # instantiate optimizers
         encoder_optimizer = optim.Adam(params=filter(lambda x: x.requires_grad, self.encoder.parameters()), lr=args.lr)
         decoder_optimizer = optim.Adam(params=filter(lambda x: x.requires_grad, self.decoder.parameters()), lr=args.lr)
 
-        for step, (x, y) in enumerate(loader):
+        for step, (x, y) in enumerate(self.loader):
             x, y = Variable(x), Variable(y)
             if torch.cuda.is_available():
                 x, y = x.cuda(), y.cuda()
@@ -161,16 +168,15 @@ class Seq2Seq:
 
             encoder_optimizer.step()
             decoder_optimizer.step()
-            # print('loss: {}'.format(loss.data[0]))
-
-        loader.reset()
+            if step % 1000 == 0:
+                print('step: {:4d} | loss: {:.3f}'.format(step, loss.data[0]))
         return loss.data[0]
 
     def train_a_batch(self, x, y, dictionary, sos_idx=0, teacher_forcing=0.5):
         # x [seq_length, batch_size]
         # y [seq_length, batch_size]
         max_output_length = MAX_LENGTH
-        batch_size = x.shape[1]
+        batch_size = x.shape[0]
         vocab_size = self.decoder.vocab_size
 
         # first run encoder
@@ -178,9 +184,9 @@ class Seq2Seq:
         # pass the hidden state to decoder
         hidden = hidden[:self.decoder.n_layer]
         # feed start of sentence to decoder
-        decoder_input = Variable(torch.LongTensor([[sos_idx for _ in range(batch_size)]]))
+        decoder_input = Variable(torch.LongTensor([[sos_idx] for _ in range(batch_size)]))
         # declare a tensor for storing decoder outputs
-        decoder_outputs = Variable(torch.zeros(max_output_length, batch_size, vocab_size))
+        decoder_outputs = Variable(torch.zeros(batch_size, max_output_length, vocab_size))
         if torch.cuda.is_available():
             decoder_input = decoder_input.cuda()
             decoder_outputs = decoder_outputs.cuda()
@@ -191,9 +197,9 @@ class Seq2Seq:
             decoder_output, hidden = self.decoder(decoder_input, hidden, encoder_outputs)
             # decoder_output [1, batch_size, vocab_size]
             # hidden []
-            decoder_outputs[t] = decoder_output[0]
+            decoder_outputs[:, t] = decoder_output[:, 0]
             if random.random() < teacher_forcing:
-                decoder_input = Variable(y.data[t].unsqueeze(0))
+                decoder_input = Variable(y.data[:, t].unsqueeze(1))
                 # decoder_input [1, batch_size]
             else:
                 decoder_input = Variable(decoder_output.data.max(2)[1])
@@ -231,7 +237,7 @@ class Seq2Seq:
                 user_input.append("<PAD>")
             user_input = [dictionary.word2index.get(x, dictionary("<UNK>")) for x in user_input]
             user_input = Variable(torch.LongTensor(user_input))
-            user_input = user_input.unsqueeze(1)
+            user_input = user_input.unsqueeze(0)
             if torch.cuda.is_available():
                 user_input = user_input.cuda()
 
@@ -252,7 +258,11 @@ class Seq2Seq:
                 next_word = dictionary(int(decoder_input.data[0]))
                 if next_word == "<EOS>" or next_word == "<PAD>":
                     break
+                if next_word == "<UNK>":
+                    continue
                 answer += next_word
+                print(answer)
+                time.sleep(1)
                 # decoder_input [1, batch_size]
                 if torch.cuda.is_available():
                     decoder_input = decoder_input.cuda()

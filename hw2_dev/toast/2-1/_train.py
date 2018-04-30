@@ -15,9 +15,9 @@ from preprocess import Dictionary
 parser = argparse.ArgumentParser()
 parser.add_argument('--epoch', type=int, default=100, help='number of epoch')
 parser.add_argument('--lr', type=float, default=1e-3, help='learning rate')
-parser.add_argument('--max_length', type=int, default=40, help='max length of input')
+parser.add_argument('--max_length', type=int, default=10, help='max length of input')
 parser.add_argument('--teaching_ratio', type=float, default=0.5, help='teaching ratio')
-parser.add_argument('-w', '--word_dim', type=int, default=128, help='dimension of word embedding')
+parser.add_argument('-w', '--word_dim', type=int, default=256, help='dimension of word embedding')
 parser.add_argument('-p', '--pretrain', action='store_true')
 parser.add_argument('-b', '--batch_size', type=int, default=32)
 
@@ -39,7 +39,7 @@ if __name__ == "__main__":
 
     # instantiate models
     encoder = Encoder(input_size=4096, hidden_size=WORD_DIM)
-    decoder = Decoder(hidden_size=WORD_DIM, output_size=vocab_size, max_length=MAX_LENGTH)
+    decoder = Decoder(hidden_size=WORD_DIM, vocab_size=vocab_size, embed_size=args.word_dim)
     if args.pretrain:
         encoder.load_state_dict(torch.load('model/encoder'))
         decoder.load_state_dict(torch.load('model/decoder'))

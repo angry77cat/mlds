@@ -8,7 +8,7 @@ import torch
 from torch.autograd import Variable
 
 
-MAX_LENGTH = 40
+MAX_LENGTH = 10
 
 
 class Dictionary:
@@ -116,8 +116,7 @@ def load_features(train_list, mode='train'):
         features.append(feature)
         print("{:.1f}%".format(len(features)/len(train_list) * 100), end='\r')
     # features = features[1:]
-    features = np.asarray(features)
-    features *= 1 + 0.1* (np.random.randn()-0.5)
+    features = np.asarray(features).transpose(1, 0, 2)
     end = time.time()
     print("loaded completed! time cost: {:2d}:{:2d}".format(int((end-start)//60), int((end-start) % 60)))
     if torch.cuda.is_available():
@@ -166,11 +165,11 @@ class Loader:
     def __next__(self):
         if self.i < self.num_batch:
             if (self.i+1) * self.batch_size <= self.num_data:
-                batch_x = self.x[self.i*self.batch_size:(self.i+1) * self.batch_size]
-                batch_y = self.y[self.i*self.batch_size:(self.i+1) * self.batch_size]
+                batch_x = self.x[:, self.i*self.batch_size:(self.i+1) * self.batch_size]
+                batch_y = self.y[:, self.i*self.batch_size:(self.i+1) * self.batch_size]
             else:
-                batch_x = self.x[self.i * self.batch_size:]
-                batch_y = self.y[self.i * self.batch_size:]
+                batch_x = self.x[:, self.i * self.batch_size:]
+                batch_y = self.y[:, self.i * self.batch_size:]
             self.i += 1
             return batch_x, batch_y
         else:

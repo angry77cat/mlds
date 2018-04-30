@@ -30,25 +30,25 @@ class Conversation(data.Dataset):
         return word2id, id2word
 
     def __getitem__(self, id):
-        x = [self.word2id.get(i, 2) for i in self.x[id]]
-        y = [self.word2id.get(i, 2) for i in self.y[id]]
+        x = [self.word2id.get(i, 3) for i in self.x[id]]
+        y = [self.word2id.get(i, 3) for i in self.y[id]]
 
         # remove <UNK>
-        x = list(filter(lambda i: i != 2, x))
-        y = list(filter(lambda i: i != 2, y))
+        x = list(filter(lambda i: i != 3, x))
+        y = list(filter(lambda i: i != 3, y))
 
         # trim to max length
         if len(x) >= MAX_LENGTH:
-            x[MAX_LENGTH-1] = 1 # <EOS>
+            x[MAX_LENGTH-1] = 2 # <EOS>
             x = x[:MAX_LENGTH]
         else:
-            x += [1] + [3] * (MAX_LENGTH-len(x)-1)
+            x += [2] + [0] * (MAX_LENGTH-len(x)-1)
 
         if len(y) >= MAX_LENGTH:
             y[MAX_LENGTH-1] = 1
             y = y[:MAX_LENGTH]
         else:
-            y += [1] + [3] * (MAX_LENGTH-len(y)-1)
+            y += [2] + [0] * (MAX_LENGTH-len(y)-1)
 
         return torch.LongTensor(x), torch.LongTensor(y)
 

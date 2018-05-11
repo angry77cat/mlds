@@ -1,3 +1,4 @@
+import os
 import sys
 import numpy as np
 import torch
@@ -53,6 +54,10 @@ def main():
     corpus = Corpus(feat_dir)
     encoder = Encoder(EMBED_SIZE, HIDDEN_SIZE)
     decoder = Decoder(VOCAB_SIZE, EMBED_SIZE, HIDDEN_SIZE)
+
+    if torch.cuda.is_available():
+        encoder.cuda()
+        decoder.cuda()
 
     encoder.load_state_dict(torch.load('stored_model/encoder'))
     decoder.load_state_dict(torch.load('stored_model/decoder'))

@@ -37,7 +37,7 @@ def train(encoder, decoder, args):
     loss_func = nn.NLLLoss()
 
     #### data prepare
-    corpus = Corpus(mode='test')
+    corpus = Corpus(mode='train')
     loader = DataLoader(corpus, batch_size=args.batch_size, shuffle=True)
     with open('testing_data/id.txt', 'r') as f:
         test_id = [id for id in f.read().strip().split('\n')]

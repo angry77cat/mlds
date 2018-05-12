@@ -23,8 +23,8 @@ class Corpus(Dataset):
         return x, y
 
     def __len__(self):
-        # return len(self.labels)
-        return 5
+        return len(self.labels)
+        # return 5
 
     def _load_vocab(self):
         with open('model/vocab.txt', 'r') as f:

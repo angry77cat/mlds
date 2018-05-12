@@ -2,3 +2,5 @@ model/*
 testing_data/*
 training_data/*
 *.json
+stored_model/decoder
+stored_model/encoder

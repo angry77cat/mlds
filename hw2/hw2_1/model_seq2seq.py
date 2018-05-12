@@ -108,7 +108,6 @@ def train(encoder, decoder, args):
         plt.legend()
         plt.savefig('loss history')
         plt.clf()
-        sys.modulues
 
 
 def evaluate_bleu(test_id, encoder, decoder, index2word):

@@ -6,10 +6,9 @@ import torch.nn as nn
 import torch.optim as optim
 from torch.autograd import Variable
 from torch.utils.data import DataLoader
-from model_seq2seq_models import Encoder, Decoder, Attention
-from model_seq2seq_dataset import Corpus
-from model_seq2seq_config import MAX_LENGTH, VOCAB_SIZE, EMBED_SIZE, HIDDEN_SIZE, USE_CUDA
-
+from eval_models import Encoder, Decoder, Attention
+from eval_dataset import Corpus
+from eval_config import MAX_LENGTH, VOCAB_SIZE, EMBED_SIZE, HIDDEN_SIZE, USE_CUDA
 
 def evaluate_bleu(test_id, encoder, decoder, index2word, feat_dir, dest_file):
     encoder.eval()
@@ -53,7 +52,8 @@ def main():
 
     corpus = Corpus(feat_dir)
     encoder = Encoder(EMBED_SIZE, HIDDEN_SIZE)
-    decoder = Decoder(VOCAB_SIZE, EMBED_SIZE, HIDDEN_SIZE)
+    attention = Attention(EMBED_SIZE, HIDDEN_SIZE)
+    decoder = Decoder(VOCAB_SIZE, EMBED_SIZE, HIDDEN_SIZE,  attention_model=attention)
 
     if torch.cuda.is_available():
         encoder.cuda()

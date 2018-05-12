@@ -3,6 +3,8 @@ import torch.nn as nn
 import torch.nn.functional as F
 from torch.autograd import Variable
 from config import MAX_LENGTH
+from gensim.models import word2vec
+import numpy as np
 
 
 class Encoder(nn.Module):
@@ -22,8 +24,16 @@ class Encoder(nn.Module):
 
 class Decoder(nn.Module):
     def __init__(self, vocab_size, embed_size, hidden_size, attention_model= None):
+        np.random.seed(0)
+
         super(Decoder, self).__init__()
         self.embedding = nn.Embedding(vocab_size, embed_size)
+        pretrained = word2vec.Word2Vec.load('model/word2vec.128d')
+        pretrained_vectors = np.array([pretrained[word] for word in (pretrained.wv.vocab)])
+        pretrained_vectors = np.concatenate((np.random.rand(4,128)-0.5, pretrained_vectors))
+        self.embedding.weight.data.copy_(torch.from_numpy(pretrained_vectors))
+        self.embedding.weight.requires_grad = False
+
         self.attention_model= attention_model
         self.fc1 = nn.Linear(hidden_size, 1280)
         self.fc2 = nn.Linear(1280, 1280)

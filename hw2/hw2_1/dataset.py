@@ -27,7 +27,7 @@ class Corpus(Dataset):
         return 5
 
     def _load_vocab(self):
-        with open('stored_model/vocab.txt', 'r') as f:
+        with open('model/vocab.txt', 'r') as f:
             for line in f:
                 line = line.strip().split('\t')
                 idx = line[0]

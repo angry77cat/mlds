@@ -11,6 +11,7 @@ from models import Encoder, Decoder, Attention
 from dataset import Corpus
 from config import MAX_LENGTH, VOCAB_SIZE, EMBED_SIZE, HIDDEN_SIZE, USE_CUDA
 import matplotlib.pyplot as plt
+import sys
 
 def get_args():
     parser = argparse.ArgumentParser()
@@ -30,7 +31,9 @@ def train(encoder, decoder, args):
     testloss_hist= []
 
     encoder_optimizer = optim.SGD(encoder.parameters(), lr=args.lr)
-    decoder_optimizer = optim.SGD(decoder.parameters(), lr=args.lr)
+    # decoder_optimizer = optim.SGD(decoder.parameters(), lr=args.lr)
+    decoder_optimizer = optim.SGD(filter(lambda p: p.requires_grad, decoder.parameters()), lr=args.lr)
+
     loss_func = nn.NLLLoss()
 
     #### data prepare
@@ -95,8 +98,8 @@ def train(encoder, decoder, args):
         else:
             print('###score not improved, highest:' +  str(np.amax(score[:-1]))+ '###')
 
-        torch.save(encoder.state_dict(), 'stored_model/encoder')
-        torch.save(decoder.state_dict(), 'stored_model/decoder')
+        torch.save(encoder.state_dict(), 'model/encoder')
+        torch.save(decoder.state_dict(), 'model/decoder')
 
         plt.plot(np.arange(epoch+1), np.log(np.array(trainloss_hist[:epoch+1])), label='trainloss')
         plt.plot(np.arange(epoch+1), np.log(np.array(testloss_hist[:epoch+1])), label='testloss')
@@ -105,6 +108,7 @@ def train(encoder, decoder, args):
         plt.legend()
         plt.savefig('loss history')
         plt.clf()
+        sys.modulues
 
 
 def evaluate_bleu(test_id, encoder, decoder, index2word):
@@ -196,10 +200,11 @@ def main():
         decoder.cuda()
 
     if args.pretrain or args.eval:
-        encoder.load_state_dict(torch.load('stored_model/encoder'))
-        decoder.load_state_dict(torch.load('stored_model/decoder'))
+        encoder.load_state_dict(torch.load('model/encoder'))
+        decoder.load_state_dict(torch.load('model/decoder'))
     else:
         np.save('score_history.npy', np.array([0]))
+
 
     # train
     if args.train:

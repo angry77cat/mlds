@@ -1,0 +1,4 @@
+model/*
+testing_data/*
+training_data/*
+*.json

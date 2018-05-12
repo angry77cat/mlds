@@ -23,11 +23,11 @@ class Corpus(Dataset):
         return x, y
 
     def __len__(self):
-        return len(self.labels)
-        # return 5
+        # return len(self.labels)
+        return 5
 
     def _load_vocab(self):
-        with open('vocab.txt', 'r') as f:
+        with open('stored_model/vocab.txt', 'r') as f:
             for line in f:
                 line = line.strip().split('\t')
                 idx = line[0]
@@ -37,17 +37,17 @@ class Corpus(Dataset):
 
     def _load_feature_and_label(self):
         # id list
-        with open(self.mode+'ing_id.txt', 'r') as f:
+        with open(self.mode+'ing_data/id.txt', 'r') as f:
             id_list = [id for id in f.read().split('\n')[:-1]]
         features = []
         # load features
         for id in id_list:
-            feature = np.load('data/MLDS_hw2_1_data/'+self.mode+'ing_data/feat/'+id+'.npy')
+            feature = np.load(self.mode+'ing_data/feat/'+id+'.npy')
             features.append(feature)
         self.features = torch.FloatTensor(features)
 
         # load labels
-        data = json.load(open("data/MLDS_hw2_1_data/"+self.mode+"ing_label.json"))
+        data = json.load(open(self.mode+"ing_label.json"))
         labels = []
         for idx, data_dict in enumerate(data):
             for caption in data_dict['caption']:

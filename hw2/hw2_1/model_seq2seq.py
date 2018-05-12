@@ -98,8 +98,8 @@ def train(encoder, decoder, args):
         else:
             print('###score not improved, highest:' +  str(np.amax(score[:-1]))+ '###')
 
-        torch.save(encoder.state_dict(), 'model/encoder')
-        torch.save(decoder.state_dict(), 'model/decoder')
+        # torch.save(encoder.state_dict(), 'model/encoder')
+        # torch.save(decoder.state_dict(), 'model/decoder')
 
         plt.plot(np.arange(epoch+1), np.log(np.array(trainloss_hist[:epoch+1])), label='trainloss')
         plt.plot(np.arange(epoch+1), np.log(np.array(testloss_hist[:epoch+1])), label='testloss')

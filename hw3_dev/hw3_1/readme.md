@@ -1,7 +1,7 @@
 -naive DCGAN  
 python main.py  
 
--conditional DCGAN
+-conditional DCGAN  
 python main.py -c
 
 -evaluation  

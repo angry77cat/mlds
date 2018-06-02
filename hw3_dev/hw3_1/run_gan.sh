@@ -1,0 +1,1 @@
+python hw3_1_main.py -e --netG stored_model/netG_epoch_21_100 

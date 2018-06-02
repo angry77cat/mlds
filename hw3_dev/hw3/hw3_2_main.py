@@ -57,6 +57,7 @@ def calc_gradient_penalty(netD, real_data, fake_data, c= None):
     # print(real_data.size())
 
     alpha = torch.rand(BATCH_SIZE, 1)
+    alpha = torch.expand_as()
     alpha = alpha.expand(real_data.size())
     alpha = alpha.cuda() if USE_CUDA else alpha
 

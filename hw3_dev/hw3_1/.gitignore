@@ -1,9 +1,10 @@
 __pycache__/*
+_archieve/*
+_experiment/*
 _pre/*
 _ref/*
 data/*
-*.png
-*.zip
-*.xml
 model/*
 output/*
+*.zip
+*.xml

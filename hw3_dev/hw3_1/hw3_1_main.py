@@ -5,9 +5,9 @@ import torch.nn as nn
 import torch.optim as optim
 import torchvision.utils as vutils
 from torch.autograd import Variable, grad
-from dataset3 import ImageData
+from dataset import ImageData
 from torch.utils.data import DataLoader
-from models3 import Generator, Discriminator
+from models import Generator, Discriminator
 import matplotlib.pyplot as plt
 import numpy as np
 import pickle

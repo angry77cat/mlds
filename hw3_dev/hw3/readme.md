@@ -1,11 +1,17 @@
 -naive DCGAN  
-python main.py  
+python hw3_1_main.py  
 
 -conditional DCGAN  
-python main.py -c
+python hw3_1_main.py -c  
+
+-WGAN  
+python hw3_1_main.py -w  
+
+-conditional WGAN  
+python hw3_1_main.py -c -w  
 
 -evaluation  
-python main.py -e --netG uploaded_model/netG_epoch_74.pth
+python hw3_1_main.py -e --netG stored_model/netG_epoch_21_100  
 
 -load pretrain  
-python main.py -p --netG {netG_path} --netD {netD_path}
+python hw3_1_main.py -p --netG {netG_path} --netD {netD_path}  

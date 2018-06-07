@@ -1,1 +1,1 @@
-python main.py -c -e -ec $1 --netG stored_model/netG_epoch_17con
+python main.py -c -e --ec $1 --netG stored_model/netG_epoch_17con

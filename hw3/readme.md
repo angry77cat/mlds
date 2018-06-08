@@ -11,7 +11,7 @@
 * train  
 `python main.py -c`
 * inference  
-`python main.py -c -e -ec {tag.txt} --netG stored_model/netG_epoch_17con`
+`python main.py -c -e --ec {tag.txt} --netG stored_model/netG_epoch_17con`
 * load pretrain  
 `python main.py -c -p --netG {netG} --netD {netD}`  
 
@@ -28,7 +28,7 @@
 * train  
 `python main.py -c -w` 
 * inference  
-`python main.py -c -w -e -ec {tag.txt} --netG {model}`
+`python main.py -c -w -e --ec {tag.txt} --netG {model}`
 * load pretrain  
 `python main.py -c -w -p --netG {netG} --netD {netD}`  
 

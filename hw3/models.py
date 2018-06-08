@@ -157,4 +157,3 @@ class Discriminator(nn.Module):
             return x1
 
 
-

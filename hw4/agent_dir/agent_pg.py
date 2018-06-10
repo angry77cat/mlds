@@ -3,6 +3,8 @@ from agent_dir.model import Net
 
 import scipy.misc
 import numpy as np
+import matplotlib.pyplot as plt
+
 import torch
 import torch.nn as nn
 import torch.optim as optim
@@ -33,6 +35,7 @@ def prepro(o,image_size=[80,80]):
     #############
     # toast add #
     #############
+    o = o[33:190, :, :]     # remove the score board
     y = 0.2126 * o[:, :, 0] + 0.7152 * o[:, :, 1] + 0.0722 * o[:, :, 2]
 
     #############
@@ -72,7 +75,7 @@ class Agent_PG(Agent):
         # optimizer
         self.optimizer = optim.RMSprop(params=self.model.parameters(), lr=args.learning_rate)
 
-        if args.test_pg:
+        if args.test_pg or args.pretrain:
             #you can load your model here
             print('loading trained model')
             self.model.load_state_dict(torch.load('model/pg_model.pth'))
@@ -105,7 +108,7 @@ class Agent_PG(Agent):
         self.model.train()
 
         for episode in range(self.episode):
-            print('episode: ', episode)
+            # print('episode: ', episode)
             # setup
             state = self.env.reset()
             state = prepro(state)
@@ -116,12 +119,14 @@ class Agent_PG(Agent):
             state_pool = []
             action_pool = []
             reward_pool = []
+            prob_pool = []
             
             # start playing
             while True:
                 self.env.render()
 
                 prob = self.model(state)
+                prob_pool.append(prob.cpu().data.numpy())
                 m = Categorical(prob)
                 
                 # memorize!
@@ -130,7 +135,9 @@ class Agent_PG(Agent):
                 # take action
                 # 1-> do nothing, 2->up, 3->down
                 # action = int(prob.topk(1)[1]) + 1
-                print(prob) 
+                
+                # print('episode: ', episode)
+                # print(prob) 
                 action = m.sample() + 1
                 action_pool.append(action)
 
@@ -193,54 +200,28 @@ class Agent_PG(Agent):
                 loss.backward()
                 self.optimizer.step()
 
+                ###############
+                # observe the std of probability of each action
+                # (does the network really react to different frame?)
+                #
+                # print("the std of each action over an episode:")
+                # print(np.asarray(prob_pool).std(0))
+                # plt.plot(np.arange(len(prob_pool)), np.asarray(prob_pool).T[0], label='none')
+                # plt.plot(np.arange(len(prob_pool)), np.asarray(prob_pool).T[1], label='up')
+                # plt.plot(np.arange(len(prob_pool)), np.asarray(prob_pool).T[2], label='down')
+                # plt.xlabel('t')
+                # plt.ylabel('probability')
+                # plt.title('std of none: %.4f, up: %.4f, down: %.4f' % (np.asarray(prob_pool).std(0)[0], np.asarray(prob_pool).std(0)[1], np.asarray(prob_pool).std(0)[2]))
+                # plt.legend()
+                # plt.show()
+
                 # clear memory!
                 state_pool = []
                 action_pool = []
                 reward_pool = []
+                prob_pool = []
 
-                torch.save(self.model.state_dict, 'model/pg_model.pth')
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-        
-
+                torch.save(self.model.state_dict(), 'model/pg_model.pth')
 
     def make_action(self, observation, test=True):
         """
@@ -257,8 +238,11 @@ class Agent_PG(Agent):
         ##################
         # YOUR CODE HERE #
         ##################
+        observation = prepro(observation)
+        observation = torch.FloatTensor(observation)
+        observation = Variable(observation).cuda() if USE_CUDA else Variable(observation)
         action = self.model(observation)
-        action = action.topk(1)
+        action = int(action.topk(1)[1])
         
         return action
         # return self.env.get_random_action()

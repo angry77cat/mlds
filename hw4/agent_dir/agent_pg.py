@@ -120,6 +120,7 @@ class Agent_PG(Agent):
             action_pool = []
             reward_pool = []
             prob_pool = []
+            log_prob_pool = []
 
             new_state = state
             save_state = state
@@ -148,6 +149,14 @@ class Agent_PG(Agent):
                 # print('episode: ', episode)
                 # print(prob) 
                 action = m.sample() + 1
+
+                ######
+                # test 
+                ######
+                log_prob_pool.append(m.log_prob(action-1))
+                ######
+                # test
+                ######
                 action_pool.append(action)
 
                 if USE_CUDA:
@@ -204,20 +213,22 @@ class Agent_PG(Agent):
                 # loss = 0
                 for i in range(len(state_pool)):
                     state = state_pool[i]
-                    action = action_pool[i]
-                    action = int(action)
+                    # action = action_pool[i]
+                    # action = int(action)
 
                     # action = Variable(torch.FloatTensor([action_pool[i]]))
                     # action = action.cuda() if USE_CUDA else action
 
                     reward = reward_pool[i]
 
-                    prob = self.model(state)
+                    # prob = self.model(state)
                     # m = Bernoulli(prob[action_pool[i] - 1])
                     # m = Categorical(prob)
                     # loss += -m.log_prob(action) * reward
                     # loss += -torch.log(prob[action-1]) * (reward - reward_mean) # substract baseline (arbitrary)
-                    loss = -torch.log(prob[action-1]) * reward # substract baseline (arbitrary)
+                    # loss = -torch.log(prob[action-1]) * reward # substract baseline (arbitrary)
+                    
+                    loss = -log_prob_pool[i] * reward
                     loss.backward()
 
                 # loss /= len(state_pool)
@@ -245,6 +256,7 @@ class Agent_PG(Agent):
                 action_pool = []
                 reward_pool = []
                 prob_pool = []
+                log_prob_pool = []
 
                 torch.save(self.model.state_dict(), 'model/pg_model.pth')
 

@@ -8,6 +8,7 @@ You DO NOT need to upload this file
 import argparse
 import numpy as np
 from environment import Environment
+from random import sample
 
 seed = 11037
 
@@ -36,6 +37,8 @@ def test(agent, env, total_episodes=30):
         #playing one game
         while(not done):
             action = agent.make_action(state, test=True)
+            # print(action)
+            # action = sample([1,2,3], 1)[0]
             state, reward, done, info = env.step(action)
             episode_reward += reward
 

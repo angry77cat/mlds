@@ -13,5 +13,7 @@ def add_arguments(parser):
     parser.add_argument('-g', '--gamma', type=float, default=0.99, help='gamma')
     parser.add_argument('-l', '--learning_rate', type=float, default=1e-4, help='learning rate')
     parser.add_argument('-p', '--pretrain', action='store_true', help='load pretrain model')
+    parser.add_argument('-r', '--render', action='store_true', help='display game')
+
 
     return parser

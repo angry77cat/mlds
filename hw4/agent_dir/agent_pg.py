@@ -108,19 +108,22 @@ class Agent_PG(Agent):
 
         self.model.train()
 
+        # memory
+        state_pool = []
+        action_pool = []
+        reward_pool = []
+        prob_pool = []
+        log_prob_pool = []
+        # for observation
+        # frame_pool = []
+
         for episode in range(self.episode):
-            print('episode: ', episode)
+            # print('episode: ', episode)
             # setup
             state = self.env.reset()
             state = prepro(state)
             state = torch.FloatTensor(state)
             state = Variable(state).cuda() if USE_CUDA else Variable(state)
-            # memory
-            state_pool = []
-            action_pool = []
-            reward_pool = []
-            prob_pool = []
-            log_prob_pool = []
 
             new_state = state
             save_state = state
@@ -136,6 +139,8 @@ class Agent_PG(Agent):
                 # plt.show()
                 save_state = new_state
                 prob = self.model(dif_state)
+                # if len(frame_pool) <= 150:
+                #     frame_pool.append(dif_state.cpu().data.numpy())
                 prob_pool.append(prob.cpu().data.numpy())
                 m = Categorical(prob)
                 
@@ -186,7 +191,10 @@ class Agent_PG(Agent):
                 running_add = 0.
                 # print(reward_pool[-5:])
 
-                print("total reward: ", np.sum(reward_pool))
+                avg_reward = np.sum(reward_pool)/self.batch_size
+                print("episode: %d | average reward: %.2f" % (episode, avg_reward))
+                with open('reward_log.csv', 'a+') as log:
+                    log.write('%d,%f\n' % (episode, avg_reward))
 
                 for i in reversed(range(len(state_pool))):
                     if reward_pool[i] == 1 or reward_pool[i] == -1:
@@ -241,9 +249,12 @@ class Agent_PG(Agent):
                 #
                 # print("the std of each action over an episode:")
                 # print(np.asarray(prob_pool).std(0))
-                plt.plot(np.arange(len(prob_pool)), np.asarray(prob_pool).T[0], label='none')
-                plt.plot(np.arange(len(prob_pool)), np.asarray(prob_pool).T[1], label='up')
-                plt.plot(np.arange(len(prob_pool)), np.asarray(prob_pool).T[2], label='down')
+                # plt.plot(np.arange(len(prob_pool)), np.asarray(prob_pool).T[0], label='none')
+                # plt.plot(np.arange(len(prob_pool)), np.asarray(prob_pool).T[1], label='up')
+                # plt.plot(np.arange(len(prob_pool)), np.asarray(prob_pool).T[2], label='down')
+                plt.plot(np.arange(150), np.asarray(prob_pool[:150]).T[0], label='none')
+                plt.plot(np.arange(150), np.asarray(prob_pool[:150]).T[1], label='up')
+                plt.plot(np.arange(150), np.asarray(prob_pool[:150]).T[2], label='down')
                 plt.xlabel('t')
                 plt.ylabel('probability')
                 plt.title('std of none: %.4f, up: %.4f, down: %.4f' % (np.asarray(prob_pool).std(0)[0], np.asarray(prob_pool).std(0)[1], np.asarray(prob_pool).std(0)[2]))
@@ -251,12 +262,22 @@ class Agent_PG(Agent):
                 plt.savefig('plot/std.png')
                 plt.close()
 
+                ###########
+                # observe
+                ###########
+                # for idx, frame in enumerate(frame_pool):
+                #     plt.imshow(frame[:, :, 0])
+                #     plt.savefig('plot/frames/frame%d.png' % idx)
+                #     plt.close()
+
                 # clear memory!
                 state_pool = []
                 action_pool = []
                 reward_pool = []
                 prob_pool = []
                 log_prob_pool = []
+                # frame_pool = []
+                # assert False
 
                 torch.save(self.model.state_dict(), 'model/pg_model.pth')
 

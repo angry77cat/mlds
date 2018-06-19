@@ -79,7 +79,7 @@ class Agent_PG(Agent):
         if args.test_pg or args.pretrain:
             #you can load your model here
             print('loading trained model -- cnn2')
-            self.model.load_state_dict(torch.load('pg_model.pth'))
+            self.model.load_state_dict(torch.load('model/pg_model.pth'))
             # self.model.eval()
 
 

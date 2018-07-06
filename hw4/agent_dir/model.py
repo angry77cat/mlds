@@ -126,18 +126,45 @@ class CNN2(nn.Module):
 		if self.bias is not None:
 			self.bias.data.uniform_(-stdv, stdv)
 
+
+############
+# toast add
+############
 class DQN(nn.Module):
     def __init__(self):
         super(DQN, self).__init__()
-        self.conv1 = nn.Conv2d(1, 16, kernel_size=5, stride=2)
+        self.conv1 = nn.Conv2d(4, 16, kernel_size=5, stride=2)
         self.bn1 = nn.BatchNorm2d(16)
         self.conv2 = nn.Conv2d(16, 32, kernel_size=5, stride=2)
         self.bn2 = nn.BatchNorm2d(32)
         self.conv3 = nn.Conv2d(32, 32, kernel_size=5, stride=2)
         self.bn3 = nn.BatchNorm2d(32)
-        self.head = nn.Linear(4608, 3)
-    def forward(self, x):
+        self.fc1 = nn.Linear(1568, 256)
+        # self.fc2 = nn.Linear(512, 256)
+        self.fc3 = nn.Linear(256, 4)
+        self.conv1.reset_parameters()
+        self.conv2.reset_parameters()
+        self.conv3.reset_parameters()
+        
+    def forward(self, x, batch=1):
         x = F.relu(self.bn1(self.conv1(x)))
         x = F.relu(self.bn2(self.conv2(x)))
         x = F.relu(self.bn3(self.conv3(x)))
-        return self.head(x.view(x.size(0), -1))
+        x = x.view(batch, -1)
+        # print(x.shape)
+        x = self.fc1(x)
+        x = F.relu(x)
+        # x = self.fc2(x)
+        # x = F.relu(x)
+        x = self.fc3(x)
+
+        # return a scalar Q value
+        return x
+    def reset_parameters(self):
+        n = self.in_channels
+        for k in self.kernel_size:
+                n *= k
+        stdv = 3. / math.sqrt(n)
+        self.weight.data.uniform_(-stdv, stdv)
+        if self.bias is not None:
+            self.bias.data.uniform_(-stdv, stdv)
